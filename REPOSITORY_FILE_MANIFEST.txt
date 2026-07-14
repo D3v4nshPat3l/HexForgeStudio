@@ -1,0 +1,57 @@
+HexForge Studio Pro — GitHub-ready repository contents
+
+Root configuration
+- .editorconfig
+- .gitattributes
+- .gitignore
+- .npmrc
+- package.json
+- package-lock.json
+- tsconfig.json
+- vite.config.ts
+- index.html
+
+GitHub automation
+- .github/workflows/ci.yml
+- .github/workflows/deploy-pages.yml
+- .github/workflows/codeql.yml
+- .github/dependabot.yml
+- .github/CODEOWNERS
+- .github/ISSUE_TEMPLATE/bug_report.yml
+- .github/ISSUE_TEMPLATE/feature_request.yml
+- .github/ISSUE_TEMPLATE/config.yml
+- .github/pull_request_template.md
+
+Project documentation
+- README.md
+- CHANGELOG.md
+- CONTRIBUTING.md
+- SECURITY.md
+- CODE_OF_CONDUCT.md
+- LICENSE
+- GITHUB_SETUP_WINDOWS.md
+- SETUP_GUIDE_WINDOWS.md
+- ARCHITECTURE.md
+- INTEGRATION.md
+- KNOWN_LIMITATIONS.md
+- SUPPORTED_FORMATS.md
+- NON_COMPATIBLE_FORMATS_FLAT.txt
+- FIXED_HEX_VIEW.md
+
+Windows helpers
+- CREATE_GITHUB_REPO_AND_PUSH.bat
+- PUSH_UPDATES.bat
+- START_HEXFORGE.bat
+- BUILD_PRODUCTION.bat
+- start.bat
+
+Application source
+- src/**
+- public/**
+- docs/screenshots/**
+
+Generated folders intentionally excluded by .gitignore
+- node_modules/
+- dist/
+- coverage/
+- *.tsbuildinfo

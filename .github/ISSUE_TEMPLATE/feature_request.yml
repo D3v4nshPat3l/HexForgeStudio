@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest an improvement or new forensic capability
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Explain the workflow limitation or user need.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the expected behavior and user interface.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Hex editor
+        - File detection and signatures
+        - Forensics lab
+        - Search and strings
+        - File comparison
+        - PE analyzer or preview
+        - PDF reporting
+        - Performance and large files
+        - Accessibility and interface
+        - Documentation
+        - Other
