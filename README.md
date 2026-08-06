@@ -8,7 +8,7 @@
 [![CI](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/actions/workflows/ci.yml/badge.svg)](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/actions/workflows/codeql.yml/badge.svg)](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/actions/workflows/codeql.yml)
 [![Deploy Pages](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/actions/workflows/deploy-pages.yml)
-[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20.19-339933.svg?logo=node.js&logoColor=white)](package.json)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-All%20rights%20reserved-lightgrey.svg)](LICENSE)
@@ -23,9 +23,9 @@
 
 ## Overview
 
-HexForge Studio Pro is a browser-based binary workstation for developers, reverse engineers, security researchers, incident responders, and digital-forensics practitioners. It combines a virtualized hex editor with search, file identification, hashing, entropy analysis, string extraction, comparison, executable inspection, and structured PDF reporting.
+HexForge Studio Pro is a browser-based binary workstation for developers, reverse engineers, security researchers, incident responders, and digital-forensics practitioners. It combines a virtualized hex editor with search, file identification, hashing, entropy analysis, string extraction, comparison, executable inspection, a weighted threat-assessment engine, and a paginated PDF forensic dossier.
 
-The editor is designed around range-based file reads and sparse modifications rather than placing an entire file into application state. Analysis and search operations run in a Web Worker to keep the interface responsive during heavier workloads.
+The editor is designed around range-based file reads and sparse modifications rather than placing an entire file into application state. Analysis, search, and threat scoring run in a Web Worker to keep the interface responsive during heavier workloads.
 
 ## Why HexForge Studio Pro?
 
@@ -34,7 +34,9 @@ The editor is designed around range-based file reads and sparse modifications ra
 | **Local-first operation** | Core processing remains on the analyst's device and does not depend on an application server. |
 | **Large-file-oriented editing** | Continuous virtualized scrolling renders visible rows with a small buffer instead of building a full-file DOM view. |
 | **Forensic analysis workflow** | Identification, hashes, entropy, strings, embedded signatures, comparison, notes, and PDF reporting are available in one workspace. |
+| **Triage-oriented threat scoring** | Capability tagging, indicator extraction, and obfuscation detection roll into one capped, weighted score with per-finding analyst guidance. |
 | **Non-destructive editing model** | Sparse patches are overlaid on range reads until the user explicitly saves or exports the modified bytes. |
+| **Display-scale aware interface** | A dark forensic console with a light mode, built on fluid scales that gain density on 4K and ultrawide panels. |
 | **Portable deployment** | The application can run through Vite locally or as a static GitHub Pages site. |
 
 ## Core capabilities
@@ -69,19 +71,46 @@ The editor is designed around range-based file reads and sparse modifications ra
 - File-extension consistency checks
 - Embedded-file signature scanning
 - MD5, SHA-1, SHA-256, SHA-512, BLAKE3, and CRC-32 hashes
-- Whole-file and selected-region entropy
+- Whole-file and selected-region entropy with an adaptive window
 - Suspicious high-entropy region detection
+- Full-file byte frequency distribution
 - PE/COFF structural analysis
 - Browser-native image preview for decoder-supported formats
 - Binary comparison with navigable difference ranges
 
+### Threat intelligence
+
+- Composite 0–100 threat score with a six-band triage classification
+- Weighted findings register with per-category score caps
+- Capability tagging across 14 behaviour classes: anti-debugging, sandbox evasion, code injection, privilege escalation, persistence, credential access, keylogging, network staging, cryptography, destructive/ransomware actions, discovery, defence evasion, and interpreter staging
+- Indicator-of-compromise extraction: URLs, IPv4/IPv6, domains, emails, registry keys, filesystem paths, Base64 blobs, GUIDs, cryptocurrency wallets, living-off-the-land command lines, and hard-coded user agents
+- Single-byte XOR key recovery with decoded-header evidence
+- Packer and protector detection (UPX, Themida, VMProtect, ASPack, Enigma, ConfuserEx, PyInstaller, and others)
+- Cryptographic constant-table identification (AES, MD5, SHA-1/256/512, CRC-32, Blowfish, ChaCha20/Salsa20, TEA)
+- Position-independent code detection: GetPC stubs, PEB walks, direct syscall gates, NOP and INT3 sleds
+- Entropy discontinuity mapping and embedded-executable carving targets
+
+> [!IMPORTANT]
+> The threat score orders samples for triage. It is not a malware verdict. A capability match proves a string is present, not that the corresponding API is imported, reachable, or ever executed.
+
 ### Reporting
 
-- Structured, paginated PDF forensic reports
-- Analyst notes and case context
-- Hash, signature, entropy, string, and format-analysis sections
-- Responsive report generation with intentionally capped large tables
-- Explicit counts for omitted results when report sections are truncated
+- Paginated forensic dossier with a cover page and risk gauge
+- Executive summary, severity distribution, and score composition by category
+- Auto-generated table of contents with verified page references
+- Vector charts: entropy profile, byte histogram, PE section map, category bars
+- Findings register with severity pills, contributing weights, and analyst guidance
+- Capability and indicator appendices with preserved byte offsets
+- Chain-of-custody continuation block and case/acquisition record
+- Hexadecimal excerpt from the cursor or current selection
+- Optional classification banner stamped on the cover and every page
+- Per-page SHA-256 footer, headers, and page numbering
+- Three detail levels with explicit counts for omitted rows
+
+### Workspace
+
+- Dark forensic console theme with a light mode, persisted per browser
+- Fluid type and spacing scales that gain density on 1440p, 4K, and ultrawide displays
 
 ## Forensics lab
 
@@ -123,14 +152,21 @@ flowchart LR
 
     A --> F[Web Worker]
     F --> G[Identification and extension checks]
-    F --> H[Hashes and entropy]
+    F --> H[Hashes, entropy, byte histogram]
     F --> I[Strings and embedded signatures]
     F --> J[Search and comparison]
     G --> K[Unified file analysis]
     H --> K
     I --> K
     J --> K
-    K --> L[Forensics UI and PDF report]
+    K --> M[Capability tagging]
+    K --> N[Indicator extraction]
+    K --> O[Obfuscation and anti-analysis scan]
+    M --> P[Weighted threat assessment]
+    N --> P
+    O --> P
+    P --> L[Forensics UI, threat workspace, PDF dossier]
+    K --> L
 ```
 
 The main UI thread owns tabs, cursor navigation, virtual rendering, sparse edits, report orchestration, and export state. The worker handles automatic analysis, search, and comparison away from the UI thread. See [Architecture](ARCHITECTURE.md) for implementation details.

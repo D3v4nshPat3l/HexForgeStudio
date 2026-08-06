@@ -1,4 +1,8 @@
 export * from "./types";
+export { extractIocs } from "./analyzers/iocs";
+export { detectCapabilities, summarizeCapabilities } from "./analyzers/capabilities";
+export { analyzeObfuscation, calculateByteHistogram } from "./analyzers/obfuscation";
+export { assessThreat } from "./analyzers/threat";
 export * from "./byte-source";
 export * from "./auto-analyzer";
 export * from "./worker-client";

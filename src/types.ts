@@ -70,6 +70,102 @@ export interface PeAnalysis {
   warnings: string[];
 }
 
+export type Severity = "info" | "low" | "medium" | "high" | "critical";
+
+export type IocType =
+  | "url"
+  | "ipv4"
+  | "ipv6"
+  | "domain"
+  | "email"
+  | "registry"
+  | "path"
+  | "base64"
+  | "guid"
+  | "wallet"
+  | "command"
+  | "user-agent";
+
+export interface IocItem {
+  type: IocType;
+  value: string;
+  offset: number;
+  severity: Severity;
+  note?: string;
+}
+
+export interface IocReport {
+  items: IocItem[];
+  counts: Record<IocType, number>;
+  truncated: boolean;
+}
+
+export interface CapabilityHit {
+  category: string;
+  indicator: string;
+  offset: number;
+  severity: Severity;
+  description: string;
+}
+
+export interface XorCandidate {
+  key: number;
+  confidence: number;
+  offset: number;
+  evidence: string;
+}
+
+export interface EntropyCliff {
+  offset: number;
+  before: number;
+  after: number;
+  delta: number;
+}
+
+export interface PatternIndicator {
+  offset: number;
+  pattern: string;
+  description: string;
+  severity: Severity;
+}
+
+export interface CryptoConstantHit {
+  name: string;
+  algorithm: string;
+  offset: number;
+}
+
+export interface ObfuscationAnalysis {
+  xorCandidates: XorCandidate[];
+  entropyCliffs: EntropyCliff[];
+  shellcode: PatternIndicator[];
+  cryptoConstants: CryptoConstantHit[];
+  embeddedExecutables: Array<{ offset: number; name: string }>;
+  packerHints: string[];
+  scanLimited: boolean;
+}
+
+export interface ThreatFinding {
+  id: string;
+  title: string;
+  category: string;
+  severity: Severity;
+  weight: number;
+  detail: string;
+  offsets: number[];
+  recommendation: string;
+}
+
+export type ThreatBand = "Minimal" | "Low" | "Moderate" | "Elevated" | "High" | "Critical";
+
+export interface ThreatAssessment {
+  score: number;
+  band: ThreatBand;
+  findings: ThreatFinding[];
+  categoryScores: Record<string, number>;
+  summary: string;
+}
+
 export interface AnalysisOptions {
   chunkSize?: number;
   stringMinLength?: number;
@@ -78,6 +174,9 @@ export interface AnalysisOptions {
   entropyStep?: number;
   signatureScanLimit?: number;
   calculateHashes?: string[];
+  securityScanLimit?: number;
+  maxIocs?: number;
+  skipSecurity?: boolean;
 }
 
 export interface FileAnalysis {
@@ -88,11 +187,16 @@ export interface FileAnalysis {
   hashes: HashResult[];
   wholeFileEntropy: number;
   entropyRegions: EntropyRegion[];
+  byteHistogram: number[];
   strings: ExtractedString[];
   signatureHits: SignatureHit[];
   suspiciousRegions: SuspiciousRegion[];
   details: Record<string, string>;
   pe?: PeAnalysis;
+  iocs: IocReport;
+  capabilities: CapabilityHit[];
+  obfuscation: ObfuscationAnalysis;
+  threat: ThreatAssessment;
   analysisVersion: string;
   analyzedAt: string;
 }

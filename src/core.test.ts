@@ -7,6 +7,11 @@ import { searchBytes } from "./analyzers/search";
 import { compareFiles } from "./compare";
 import { analyzeFile } from "./auto-analyzer";
 import { buildPdfReport } from "./report/pdf-report";
+import { extractIocs } from "./analyzers/iocs";
+import { detectCapabilities, summarizeCapabilities } from "./analyzers/capabilities";
+import { analyzeObfuscation } from "./analyzers/obfuscation";
+import { assessThreat } from "./analyzers/threat";
+import type { ExtractedString } from "./types";
 
 function fileOf(bytes: Uint8Array, name: string, type = "application/octet-stream"): File {
   return new File([bytes.slice().buffer as ArrayBuffer], name, { type, lastModified: 1_700_000_000_000 });
@@ -81,5 +86,183 @@ describe("binary analysis", () => {
     const report = buildPdfReport(analysis, { userNotes: "Test note", includeStrings: 20 });
     const arrayBuffer = report.output("arraybuffer");
     expect(arrayBuffer.byteLength).toBeGreaterThan(1000);
+  });
+});
+
+function stringOf(value: string, offset = 0): ExtractedString {
+  return { offset, byteLength: value.length, encoding: "ASCII", value };
+}
+
+describe("indicator extraction", () => {
+  it("classifies URLs, addresses, registry keys, and wallets with severities", () => {
+    const report = extractIocs([
+      stringOf("Fetching https://updates.example.com/payload.exe now", 100),
+      stringOf("callback 203.0.113.44:8080 fallback 192.168.1.10", 200),
+      stringOf("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Updater", 300),
+      stringOf("send to 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", 400),
+      stringOf("contact operator@mail.example.org", 500)
+    ]);
+
+    const url = report.items.find((item) => item.type === "url");
+    expect(url?.value).toBe("https://updates.example.com/payload.exe");
+    expect(url?.severity).toBe("high");
+
+    const routable = report.items.find((item) => item.type === "ipv4" && item.value.startsWith("203."));
+    expect(routable?.severity).toBe("medium");
+    const priv = report.items.find((item) => item.type === "ipv4" && item.value.startsWith("192.168."));
+    expect(priv?.severity).toBe("info");
+
+    expect(report.items.find((item) => item.type === "registry")?.severity).toBe("high");
+    expect(report.items.some((item) => item.type === "wallet")).toBe(true);
+    expect(report.counts.email).toBe(1);
+  });
+
+  it("flags encoded PowerShell and shadow-copy deletion as critical commands", () => {
+    const report = extractIocs([
+      stringOf("powershell.exe -nop -w hidden -enc SQBFAFgAKABOAGUAdwAtAE8AYgBqAGUAYwB0AA==", 0),
+      stringOf("vssadmin delete shadows /all /quiet", 900)
+    ]);
+    const commands = report.items.filter((item) => item.type === "command");
+    expect(commands.length).toBeGreaterThanOrEqual(2);
+    expect(commands.every((item) => item.severity === "critical" || item.severity === "high")).toBe(true);
+  });
+
+  it("rejects version numbers and low-variety runs that resemble indicators", () => {
+    const report = extractIocs([
+      stringOf("product version 1.2.3.4 build", 0),
+      stringOf(`prefix ${"A".repeat(64)} suffix`, 100)
+    ]);
+    expect(report.counts.ipv4).toBe(0);
+    expect(report.counts.base64).toBe(0);
+  });
+});
+
+describe("capability detection", () => {
+  it("tags injection and anti-debugging literals with their categories", () => {
+    const hits = detectCapabilities([
+      stringOf("IsDebuggerPresent", 16),
+      stringOf("VirtualAllocEx WriteProcessMemory CreateRemoteThread", 64),
+      stringOf("harmless configuration text", 256)
+    ]);
+    const categories = summarizeCapabilities(hits).map((group) => group.category);
+    expect(categories).toContain("Anti-debugging");
+    expect(categories).toContain("Code injection");
+    expect(hits.find((hit) => hit.indicator === "IsDebuggerPresent")?.offset).toBe(16);
+  });
+});
+
+describe("obfuscation analysis", () => {
+  it("recovers a single-byte XOR key that reveals an MZ/PE image", async () => {
+    const plain = new Uint8Array(4096);
+    plain.set(new TextEncoder().encode("MZ\x90\x00"), 0);
+    plain.set(new TextEncoder().encode("This program cannot be run in DOS mode"), 78);
+    plain.set(new TextEncoder().encode("PE\0\0"), 200);
+    const key = 0x5a;
+    const encoded = plain.map((byte) => byte ^ key);
+
+    const result = await analyzeObfuscation(new FileByteSource(fileOf(encoded, "encoded.bin")), [], []);
+    expect(result.xorCandidates[0]?.key).toBe(key);
+    expect(result.xorCandidates[0]?.confidence).toBeGreaterThan(0.5);
+  });
+
+  it("detects AES constants and long NOP sleds", async () => {
+    const bytes = new Uint8Array(2048);
+    bytes.set([0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76], 512);
+    bytes.fill(0x90, 1024, 1024 + 64);
+
+    const result = await analyzeObfuscation(new FileByteSource(fileOf(bytes, "constants.bin")), [], []);
+    expect(result.cryptoConstants.some((hit) => hit.algorithm.includes("AES"))).toBe(true);
+    expect(result.shellcode.some((item) => item.pattern === "NOP sled")).toBe(true);
+  });
+
+  it("reports embedded executable headers found beyond offset zero", async () => {
+    const result = await analyzeObfuscation(
+      new FileByteSource(fileOf(new Uint8Array(64), "container.bin")),
+      [],
+      [
+        { id: "pe", name: "DOS/Windows executable container", offset: 0, length: 2, extensions: [".exe"], confidence: 0.86 },
+        { id: "pe", name: "DOS/Windows executable container", offset: 4096, length: 2, extensions: [".exe"], confidence: 0.86 }
+      ]
+    );
+    expect(result.embeddedExecutables).toHaveLength(1);
+    expect(result.embeddedExecutables[0]?.offset).toBe(4096);
+  });
+});
+
+describe("threat scoring", () => {
+  const baseInput = {
+    filename: "sample.bin",
+    size: 4096,
+    detectedType: [],
+    wholeFileEntropy: 4,
+    suspiciousRegions: [],
+    capabilities: [],
+    iocs: extractIocs([]),
+    obfuscation: { xorCandidates: [], entropyCliffs: [], shellcode: [], cryptoConstants: [], embeddedExecutables: [], packerHints: [], scanLimited: false }
+  };
+
+  it("returns a minimal band when nothing is raised", () => {
+    const assessment = assessThreat({ ...baseInput, size: 100 });
+    expect(assessment.findings).toHaveLength(0);
+    expect(assessment.band).toBe("Minimal");
+    expect(assessment.score).toBe(0);
+  });
+
+  it("escalates when injection, packing, and critical indicators combine", () => {
+    const assessment = assessThreat({
+      ...baseInput,
+      detectedType: [{ id: "pe", name: "DOS/Windows executable container", extensions: [".exe"], confidence: 0.86, reason: "MZ", offsets: [0] }],
+      wholeFileEntropy: 7.95,
+      capabilities: detectCapabilities([stringOf("VirtualAllocEx WriteProcessMemory CreateRemoteThread"), stringOf("IsDebuggerPresent")]),
+      iocs: extractIocs([stringOf("vssadmin delete shadows /all")]),
+      obfuscation: { ...baseInput.obfuscation, packerHints: ["UPX"], xorCandidates: [{ key: 0x41, confidence: 0.8, offset: 0, evidence: "decodes to an MZ header" }] }
+    });
+    expect(assessment.score).toBeGreaterThan(48);
+    expect(["Elevated", "High", "Critical"]).toContain(assessment.band);
+    expect(assessment.findings.some((finding) => finding.severity === "critical")).toBe(true);
+  });
+
+  it("caps each category so one noisy signal cannot dominate the score", () => {
+    const assessment = assessThreat({
+      ...baseInput,
+      capabilities: detectCapabilities(Array.from({ length: 60 }, (_, index) => stringOf("IsDebuggerPresent CheckRemoteDebuggerPresent NtQueryInformationProcess", index * 128)))
+    });
+    expect(assessment.categoryScores["Anti-analysis"]).toBeLessThanOrEqual(22);
+    expect(assessment.score).toBeLessThanOrEqual(100);
+  });
+
+  it("treats an executable wearing a document extension as critical", () => {
+    const assessment = assessThreat({
+      ...baseInput,
+      filename: "invoice.pdf",
+      detectedType: [{ id: "pe", name: "DOS/Windows executable container", extensions: [".exe", ".dll"], confidence: 0.95, reason: "MZ header", offsets: [0] }]
+    });
+    const finding = assessment.findings.find((item) => item.id === "structure:extension-mismatch");
+    expect(finding?.severity).toBe("critical");
+  });
+});
+
+describe("forensic dossier", () => {
+  it("produces a paginated dossier with a contents page and charts", async () => {
+    const payload = new TextEncoder().encode(
+      "MZ\x90\x00 IsDebuggerPresent VirtualAllocEx CreateRemoteThread " +
+      "https://malicious.example.tk/stage2.exe 203.0.113.7 " +
+      "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\Persist " +
+      "powershell.exe -nop -w hidden -enc QQBCAEMA"
+    );
+    const analysis = await analyzeFile(fileOf(payload, "dropper.pdf"), { stringMaxResults: 500 });
+
+    expect(analysis.threat.findings.length).toBeGreaterThan(0);
+    expect(analysis.byteHistogram).toHaveLength(256);
+    expect(analysis.iocs.items.length).toBeGreaterThan(0);
+
+    const report = buildPdfReport(analysis, {
+      analystName: "A. Examiner",
+      caseId: "CASE-001",
+      classification: "INTERNAL USE ONLY",
+      hexExcerpt: { offset: 0, bytes: [...payload.slice(0, 64)] }
+    });
+    expect(report.internal.pages.length - 1).toBeGreaterThan(6);
+    expect(report.output("arraybuffer").byteLength).toBeGreaterThan(10_000);
   });
 });

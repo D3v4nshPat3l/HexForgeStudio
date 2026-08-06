@@ -5,7 +5,23 @@ import { analyzePe } from "./analyzers/pe";
 import { identifyFile, scanEmbeddedSignatures } from "./analyzers/signatures";
 import { extractStrings } from "./analyzers/strings";
 import { analyzeFormatDetails } from "./analyzers/format-details";
-import type { AnalysisOptions, FileAnalysis, ProgressEvent, SuspiciousRegion } from "./types";
+import { extractIocs } from "./analyzers/iocs";
+import { detectCapabilities } from "./analyzers/capabilities";
+import { analyzeObfuscation, calculateByteHistogram } from "./analyzers/obfuscation";
+import { assessThreat } from "./analyzers/threat";
+import type { AnalysisOptions, FileAnalysis, IocReport, ObfuscationAnalysis, ProgressEvent, SuspiciousRegion } from "./types";
+
+const ANALYSIS_VERSION = "3.0.0";
+
+const EMPTY_IOCS: IocReport = {
+  items: [],
+  counts: { url: 0, ipv4: 0, ipv6: 0, domain: 0, email: 0, registry: 0, path: 0, base64: 0, guid: 0, wallet: 0, command: 0, "user-agent": 0 },
+  truncated: false
+};
+
+const EMPTY_OBFUSCATION: ObfuscationAnalysis = {
+  xorCandidates: [], entropyCliffs: [], shellcode: [], cryptoConstants: [], embeddedExecutables: [], packerHints: [], scanLimited: false
+};
 
 export async function analyzeFile(
   file: File,
@@ -18,10 +34,22 @@ export async function analyzeFile(
   const detectedType = await identifyFile(source, file.name);
   onProgress?.({ stage: "identify", completed: 1, total: 1 });
 
-  const [hashes, wholeFileEntropy, entropyRegions, strings, signatureHits] = await Promise.all([
+  // Aim for roughly 256 entropy windows regardless of file size, because a fixed 64 KiB
+  // window collapses a small file to one useless sample. The 4 KiB floor matters: Shannon
+  // entropy over n samples is bounded by log2(n), so windows much below this can never
+  // reach the 7.35/7.75 suspicion thresholds and would silently suppress every region.
+  const MIN_ENTROPY_WINDOW = 4096;
+  const requestedWindow = options.entropyWindowSize ?? 64 * 1024;
+  const entropyWindow = Math.min(requestedWindow, Math.max(MIN_ENTROPY_WINDOW, Math.ceil(source.size / 256)));
+  // The step is clamped to the window as well: a caller-supplied step larger than the
+  // adapted window would otherwise skip most of a small file and yield one sample.
+  const entropyStep = Math.max(1, Math.min(options.entropyStep ?? entropyWindow, entropyWindow));
+
+  const [hashes, wholeFileEntropy, byteHistogram, entropyRegions, strings, signatureHits] = await Promise.all([
     calculateHashes(source, options.calculateHashes ?? DEFAULT_HASHES, chunkSize, onProgress),
     calculateWholeFileEntropy(source, chunkSize, onProgress),
-    calculateEntropyRegions(source, options.entropyWindowSize ?? 64 * 1024, options.entropyStep ?? 64 * 1024),
+    calculateByteHistogram(source, chunkSize),
+    calculateEntropyRegions(source, entropyWindow, entropyStep),
     extractStrings(source, { minLength: options.stringMinLength ?? 4, maxResults: options.stringMaxResults ?? 10000, chunkSize }, onProgress),
     scanEmbeddedSignatures(source, options.signatureScanLimit ?? Math.min(source.size, 512 * 1024 * 1024), Math.min(chunkSize, 4 * 1024 * 1024))
   ]);
@@ -42,6 +70,28 @@ export async function analyzeFile(
   let pe;
   if (detectedType.some((match) => match.id === "pe")) pe = await analyzePe(source);
 
+  onProgress?.({ stage: "security", completed: 0, total: 1, message: "Threat and indicator analysis" });
+  let iocs = EMPTY_IOCS;
+  let capabilities: FileAnalysis["capabilities"] = [];
+  let obfuscation = EMPTY_OBFUSCATION;
+  if (!options.skipSecurity) {
+    iocs = extractIocs(strings, options.maxIocs ?? 4000);
+    capabilities = detectCapabilities(strings);
+    obfuscation = await analyzeObfuscation(source, entropyRegions, signatureHits, options.securityScanLimit ?? 6 * 1024 * 1024);
+  }
+  const threat = assessThreat({
+    filename: file.name,
+    size: file.size,
+    detectedType,
+    wholeFileEntropy,
+    suspiciousRegions,
+    capabilities,
+    iocs,
+    obfuscation,
+    pe
+  });
+  onProgress?.({ stage: "security", completed: 1, total: 1 });
+
   return {
     filename: file.name,
     size: file.size,
@@ -50,12 +100,17 @@ export async function analyzeFile(
     hashes,
     wholeFileEntropy,
     entropyRegions,
+    byteHistogram,
     strings,
     signatureHits,
     suspiciousRegions,
     details,
     ...(pe ? { pe } : {}),
-    analysisVersion: "2.0.0",
+    iocs,
+    capabilities,
+    obfuscation,
+    threat,
+    analysisVersion: ANALYSIS_VERSION,
     analyzedAt: new Date().toISOString()
   };
 }

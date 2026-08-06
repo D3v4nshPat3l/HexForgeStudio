@@ -39,3 +39,6 @@ Desktop.ini
 samples/private/
 reports/
 *.modified.*
+
+# Local editor/agent tooling
+.claude/

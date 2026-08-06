@@ -7,9 +7,11 @@ import { convertBase } from "./base-converter";
 import { exportAsSourceCode, type SourceLanguage } from "./export-source";
 import { createNativeImagePreview, canBrowserDecodeImage, type PreviewHandle } from "./image-preview";
 import { BUILTIN_SIGNATURES } from "./analyzers/signatures";
-import type { DifferenceRange, FileAnalysis, ProgressEvent, SearchQuery, SearchResult } from "./types";
+import { summarizeCapabilities } from "./analyzers/capabilities";
+import { applyTheme, resolveInitialTheme, toggleTheme, type ThemeName } from "./theme";
+import type { DifferenceRange, FileAnalysis, IocType, ProgressEvent, SearchQuery, SearchResult, Severity, ThreatFinding } from "./types";
 
-type MainView = "hex" | "signature" | "forensics" | "comparison" | "preview" | "report";
+type MainView = "hex" | "signature" | "intel" | "forensics" | "comparison" | "preview" | "report";
 type InputMode = "hex" | "text";
 
 interface PatchHistoryEntry {
@@ -45,7 +47,13 @@ interface EditorTab {
   notes: string;
   analyst: string;
   caseId: string;
+  organization: string;
+  evidenceNumber: string;
+  acquisitionMethod: string;
+  classification: string;
+  includeHexExcerpt: boolean;
   reportDetail: "summary" | "standard" | "full";
+  iocFilter: IocType | "all";
   searchResults: SearchResult[];
   differences: DifferenceRange[];
   compareFile?: File | undefined;
@@ -75,6 +83,9 @@ const HEX_OVERSCAN_ROWS = 12;
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("Application root is missing.");
 
+let theme: ThemeName = resolveInitialTheme();
+applyTheme(theme);
+
 const logoSvg = `
 <svg viewBox="0 0 64 64" aria-hidden="true">
   <defs>
@@ -91,7 +102,11 @@ app.innerHTML = `
   <header class="brand-header">
     <div class="brand-lockup"><span class="brand-logo">${logoSvg}</span><div><h1>HexForge Studio Pro</h1><p>Auto Forensics · Extended Hex Editor & Signature Analyzer</p></div></div>
     <div class="active-file-heading"><strong id="activeFileHeading">No file loaded</strong><span id="activeFileSubheading">Open, drop, or create a binary file to begin</span></div>
-    <span class="local-pill">Local browser processing</span>
+    <div class="header-tools">
+      <span id="riskBadgeSlot"></span>
+      <span class="local-pill">Local browser processing</span>
+      <button class="theme-toggle" data-action="toggle-theme" title="Switch between the dark and light console themes" aria-label="Switch theme">◐</button>
+    </div>
   </header>
 
   <nav class="command-bar" aria-label="Application commands">
@@ -113,6 +128,7 @@ app.innerHTML = `
     <button data-command="insert" disabled><b>⊕</b> Insert</button>
     <button data-command="delete" disabled><b>⌫</b> Delete</button>
     <span class="command-spacer"></span>
+    <button data-command="intel" disabled><b>◈</b> Threat Intel</button>
     <button data-command="forensics" disabled><b>⬡</b> Forensics</button>
     <button data-command="compare" disabled><b>⇄</b> Compare</button>
     <button data-command="report" disabled><b>▧</b> Report</button>
@@ -154,6 +170,7 @@ app.innerHTML = `
       <nav class="view-tabs" id="viewTabs">
         <button data-view="hex" class="active">Hex Editor</button>
         <button data-view="signature">Signature Analysis</button>
+        <button data-view="intel">Threat Intelligence<span class="tab-count" id="intelTabCount">0</span></button>
         <button data-view="forensics">Forensics Lab</button>
         <button data-view="comparison">File Comparison</button>
         <button data-view="preview">PE / Preview</button>
@@ -383,7 +400,9 @@ function createTab(file: File): EditorTab {
   return {
     id: crypto.randomUUID(), file, source: new FileByteSource(file), patches: new Map(), cursor: 0, nibble: 0, inputMode: "hex",
     page: 0, pageSize: 1024, selectionStart: file.size ? 0 : null, selectionEnd: file.size ? 0 : null,
-    notes: "", analyst: "", caseId: "", reportDetail: "standard", searchResults: [], differences: [], undo: [], redo: [],
+    notes: "", analyst: "", caseId: "", organization: "", evidenceNumber: "", acquisitionMethod: "", classification: "",
+    includeHexExcerpt: true, reportDetail: "standard", iocFilter: "all",
+    searchResults: [], differences: [], undo: [], redo: [],
     hexScrollTop: 0, hexScrollLeft: 0
   };
 }
@@ -599,16 +618,214 @@ async function renderInspector(): Promise<void> {
 }
 
 function renderViewTabs(): void {
-  document.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((button) => button.classList.toggle("active", button.dataset.view === activeView));
+  document.querySelectorAll<HTMLButtonElement>(".view-tabs [data-view]").forEach((button) => button.classList.toggle("active", button.dataset.view === activeView));
+  const count = document.querySelector<HTMLElement>("#intelTabCount");
+  const analysis = activeTab()?.analysis;
+  if (count) {
+    count.textContent = String(analysis?.threat.findings.length ?? 0);
+    count.hidden = !analysis;
+  }
+  renderRiskBadge();
 }
 
 function renderActiveView(): void {
   if (activeView === "hex") renderHexView();
   else if (activeView === "signature") renderSignatureView();
+  else if (activeView === "intel") renderIntelView();
   else if (activeView === "forensics") renderForensicsView();
   else if (activeView === "comparison") renderComparisonView();
   else if (activeView === "preview") renderPreviewView();
   else renderReportView();
+}
+
+// ---------------------------------------------------------------- threat intel
+
+const SEVERITY_ORDER: Severity[] = ["critical", "high", "medium", "low", "info"];
+
+function severityLabel(severity: Severity): string {
+  return severity.charAt(0).toUpperCase() + severity.slice(1);
+}
+
+/** Maps a 0–100 score onto the CSS severity class used for dial and badge colouring. */
+function bandSeverityClass(band: string): string {
+  if (band === "Critical") return "sev-critical";
+  if (band === "High" || band === "Elevated") return "sev-high";
+  if (band === "Moderate") return "sev-medium";
+  if (band === "Low") return "sev-low";
+  return "sev-info";
+}
+
+function renderRiskBadge(): void {
+  const slot = document.querySelector<HTMLElement>("#riskBadgeSlot");
+  if (!slot) return;
+  const analysis = activeTab()?.analysis;
+  if (!analysis) { slot.innerHTML = ""; return; }
+  const { score, band } = analysis.threat;
+  slot.innerHTML = `<button class="risk-badge ${bandSeverityClass(band)}" data-view="intel" title="Open the threat intelligence workspace"><i></i><b>${score}</b><span>${escapeHtml(band)}</span></button>`;
+}
+
+function renderSeverityStrip(counts: Array<{ severity: Severity; count: number }>): string {
+  const total = counts.reduce((sum, entry) => sum + entry.count, 0);
+  if (total === 0) return '<div class="severity-strip"></div>';
+  const segments = counts
+    .filter((entry) => entry.count > 0)
+    .map((entry) => `<i class="${bandSeverityClass("")} sev-${entry.severity}" style="width:${(entry.count / total) * 100}%" title="${entry.count} ${entry.severity}"></i>`)
+    .join("");
+  return `<div class="severity-strip">${segments}</div>`;
+}
+
+function renderFindingCard(finding: ThreatFinding): string {
+  const chips = finding.offsets.slice(0, 12).map((offset) => `<button data-jump="${offset}">${formatOffset(offset)}</button>`).join("");
+  const extra = finding.offsets.length > 12 ? `<button disabled>+${finding.offsets.length - 12} more</button>` : "";
+  return `<article class="finding-card sev-${finding.severity}">
+    <div class="finding-head">
+      <h4>${escapeHtml(finding.title)}</h4>
+      <div class="finding-meta"><em>${escapeHtml(finding.category)}</em><span class="sev-pill sev-${finding.severity}">${severityLabel(finding.severity)} · ${finding.weight.toFixed(1)}</span></div>
+    </div>
+    <p>${escapeHtml(finding.detail)}</p>
+    ${chips ? `<div class="offset-chips">${chips}${extra}</div>` : ""}
+    <p class="guidance">${escapeHtml(finding.recommendation)}</p>
+  </article>`;
+}
+
+/** Compact CSS-only entropy sparkline; buckets keep the maximum so spikes survive. */
+function renderEntropySparkline(analysis: FileAnalysis): string {
+  const regions = analysis.entropyRegions;
+  if (regions.length === 0) return '<div class="table-empty">No entropy windows were measured.</div>';
+  const buckets = Math.min(200, regions.length);
+  const perBucket = regions.length / buckets;
+  const bars: string[] = [];
+  for (let index = 0; index < buckets; index += 1) {
+    let peak = 0;
+    const from = Math.floor(index * perBucket);
+    const to = Math.max(from + 1, Math.floor((index + 1) * perBucket));
+    for (let inner = from; inner < to && inner < regions.length; inner += 1) peak = Math.max(peak, regions[inner]?.entropy ?? 0);
+    const offset = regions[from]?.offset ?? 0;
+    const color = peak >= 7.75 ? "var(--sev-critical)" : peak >= 7.35 ? "var(--sev-high)" : peak >= 5 ? "var(--sev-medium)" : "var(--accent)";
+    bars.push(`<i style="height:${Math.max(2, (peak / 8) * 100)}%;background:${color}" title="${formatOffset(offset)} · ${peak.toFixed(3)} bits/byte"></i>`);
+  }
+  return `<div class="entropy-track">${bars.join("")}</div>`;
+}
+
+function renderIocTable(analysis: FileAnalysis, filter: IocType | "all"): string {
+  const items = analysis.iocs.items.filter((item) => filter === "all" || item.type === filter).slice(0, 3000);
+  if (items.length === 0) return '<div class="table-empty">No indicators match the current filter.</div>';
+  const rows = items.map((item) => `<button class="intel-row" data-jump="${item.offset}">
+    <code>${formatOffset(item.offset)}</code>
+    <span>${escapeHtml(item.type)}</span>
+    <code title="${escapeHtml(item.value)}">${escapeHtml(item.value)}</code>
+    <span class="sev-pill sev-${item.severity}">${severityLabel(item.severity)}</span>
+    <span>${escapeHtml(item.note ?? "—")}</span>
+  </button>`).join("");
+  return `<div class="intel-head"><span>OFFSET</span><span>TYPE</span><span>VALUE</span><span>SEVERITY</span><span>NOTE</span></div>${rows}`;
+}
+
+function renderIntelView(): void {
+  const tab = activeTab();
+  if (!tab) {
+    viewContent.innerHTML = `<div class="content-scroll">${emptyCard("Open a file to run threat analysis", "The threat workspace scores capability indicators, extracted indicators of compromise, obfuscation artefacts, and structural anomalies into a single triage view.")}</div>`;
+    return;
+  }
+  const analysis = tab.analysis;
+  if (!analysis) {
+    viewContent.innerHTML = `<div class="content-scroll">${analysisProgress(tab)}${emptyCard("Waiting for automatic analysis", "Threat scoring runs after identification, hashing, entropy, and string extraction complete.", false)}</div>`;
+    return;
+  }
+
+  const threat = analysis.threat;
+  const counts = SEVERITY_ORDER.map((severity) => ({ severity, count: threat.findings.filter((finding) => finding.severity === severity).length }));
+  const categories = Object.entries(threat.categoryScores).sort((left, right) => right[1] - left[1]);
+  const maxCategory = Math.max(1, ...categories.map(([, value]) => value));
+  const capabilityGroups = summarizeCapabilities(analysis.capabilities);
+  const obfuscation = analysis.obfuscation;
+  const activeTypes = (Object.entries(analysis.iocs.counts) as Array<[IocType, number]>).filter(([, count]) => count > 0);
+
+  viewContent.innerHTML = `<div class="content-scroll intel-view">${analysisProgress(tab)}
+
+  <section class="intel-hero">
+    <div class="risk-dial ${bandSeverityClass(threat.band)}" style="--dial-deg:${(threat.score / 100) * 360};--dial-color:var(--sev-${bandSeverityClass(threat.band).replace("sev-", "")});--dial-glow:var(--accent-wash)">
+      <div><strong>${threat.score}</strong><small>OF 100</small><em>${escapeHtml(threat.band.toUpperCase())}</em></div>
+    </div>
+    <div class="intel-hero-body">
+      <h2>Composite threat assessment</h2>
+      <p>${escapeHtml(threat.summary)}</p>
+      ${renderSeverityStrip(counts)}
+      <div class="severity-legend">${counts.map((entry) => `<span><i class="sev-${entry.severity}" style="background:var(--sev-${entry.severity})"></i>${severityLabel(entry.severity)} ${entry.count}</span>`).join("")}</div>
+    </div>
+  </section>
+
+  <div class="two-column-cards">
+    <section class="content-card">
+      <div class="card-heading"><h3>SCORE COMPOSITION</h3><span>${categories.length} categor${categories.length === 1 ? "y" : "ies"}</span></div>
+      <p>Each category is capped independently so a single noisy signal cannot dominate the composite score.</p>
+      ${categories.length ? `<div class="category-bars">${categories.map(([label, value]) => `<div class="category-bar"><span>${escapeHtml(label)}</span><div><i style="width:${(value / maxCategory) * 100}%"></i></div><b>${value.toFixed(1)}</b></div>`).join("")}</div>` : '<div class="table-empty">No category contributed to the score.</div>'}
+    </section>
+    <section class="content-card">
+      <div class="card-heading"><h3>ENTROPY PROFILE</h3><span>${analysis.wholeFileEntropy.toFixed(4)} bits/byte</span></div>
+      <p>Peak entropy per sampled window across the whole file. Red bars cross the high-suspicion threshold.</p>
+      ${renderEntropySparkline(analysis)}
+      <div class="metrics" style="margin-top:calc(var(--u) * 3)">
+        <article><strong>${analysis.suspiciousRegions.length}</strong><small>Suspicious regions</small></article>
+        <article><strong>${obfuscation.entropyCliffs.length}</strong><small>Entropy cliffs</small></article>
+        <article><strong>${obfuscation.scanLimited ? "Sampled" : "Full"}</strong><small>Byte scan coverage</small></article>
+      </div>
+    </section>
+  </div>
+
+  <section class="content-card">
+    <div class="card-heading"><h3>THREAT FINDINGS</h3><span>${threat.findings.length} scored</span></div>
+    <p>Findings are ordered by severity, then by weight contributed. Offsets are clickable and jump to the hex editor.</p>
+    ${threat.findings.length ? `<div class="finding-list">${threat.findings.map(renderFindingCard).join("")}</div>` : '<div class="table-empty">No scored indicators were raised. Absence of indicators is not evidence of safety.</div>'}
+  </section>
+
+  <section class="content-card">
+    <div class="card-heading"><h3>BEHAVIOURAL CAPABILITIES</h3><span>${analysis.capabilities.length} indicator hit(s)</span></div>
+    <p>String literals matching a curated behaviour table. A match proves the text exists in the file; it does not prove the API is imported, reachable, or executed.</p>
+    ${capabilityGroups.length ? `<div class="capability-grid">${capabilityGroups.map((group) => `<article class="capability-tile sev-${group.severity}"><b>${group.count}</b><strong>${escapeHtml(group.category)}</strong><small>${severityLabel(group.severity)} severity class</small></article>`).join("")}</div>` : '<div class="table-empty">No capability indicators matched.</div>'}
+    ${analysis.capabilities.length ? `<div class="result-table" style="margin-top:calc(var(--u) * 3.5)"><div class="intel-head"><span>OFFSET</span><span>CATEGORY</span><span>INDICATOR</span><span>SEVERITY</span><span>MEANING</span></div>${analysis.capabilities.slice(0, 1200).map((hit) => `<button class="intel-row" data-jump="${hit.offset}"><code>${formatOffset(hit.offset)}</code><span>${escapeHtml(hit.category)}</span><code>${escapeHtml(hit.indicator)}</code><span class="sev-pill sev-${hit.severity}">${severityLabel(hit.severity)}</span><span title="${escapeHtml(hit.description)}">${escapeHtml(hit.description)}</span></button>`).join("")}</div>` : ""}
+  </section>
+
+  <section class="content-card">
+    <div class="card-heading"><h3>INDICATORS OF COMPROMISE</h3><span>${analysis.iocs.items.length} extracted${analysis.iocs.truncated ? " · truncated" : ""}</span></div>
+    <p>Extracted lexically from decoded strings with original byte offsets preserved. No network resolution or reputation lookup was performed.</p>
+    <div class="ioc-filters">
+      <button data-ioc-filter="all" class="${tab.iocFilter === "all" ? "active" : ""}">All ${analysis.iocs.items.length}</button>
+      ${activeTypes.map(([type, count]) => `<button data-ioc-filter="${type}" class="${tab.iocFilter === type ? "active" : ""}">${escapeHtml(type)} ${count}</button>`).join("")}
+    </div>
+    <div class="intel-table" id="iocTable">${renderIocTable(analysis, tab.iocFilter)}</div>
+    <div class="inline-controls"><button data-action="export-iocs">Export indicators as CSV</button><span>Validate every indicator out-of-band before using it for blocking or hunting.</span></div>
+  </section>
+
+  <div class="two-column-cards">
+    <section class="content-card">
+      <div class="card-heading"><h3>OBFUSCATION ARTEFACTS</h3><span>${obfuscation.packerHints.length} packer hint(s)</span></div>
+      <p>Packer markers, recovered XOR keys, and well-known cryptographic constant tables found in the sampled regions.</p>
+      ${obfuscation.packerHints.length ? `<div class="warning-box">Packer or protector markers: ${escapeHtml(obfuscation.packerHints.join(", "))}</div>` : ""}
+      <div class="result-table" style="margin-top:calc(var(--u) * 3)">
+        <div class="signature-head"><span>KEY / OFFSET</span><span>ARTEFACT</span><span>EVIDENCE</span><span>CONFIDENCE</span></div>
+        ${obfuscation.xorCandidates.map((candidate) => `<button class="signature-row" data-jump="${candidate.offset}"><code>0x${candidate.key.toString(16).toUpperCase().padStart(2, "0")}</code><span>Single-byte XOR key</span><span title="${escapeHtml(candidate.evidence)}">${escapeHtml(candidate.evidence)}</span><b>${Math.round(candidate.confidence * 100)}%</b></button>`).join("")}
+        ${obfuscation.cryptoConstants.map((hit) => `<button class="signature-row" data-jump="${hit.offset}"><code>${formatOffset(hit.offset)}</code><span>${escapeHtml(hit.name)}</span><span>${escapeHtml(hit.algorithm)}</span><b>—</b></button>`).join("")}
+        ${obfuscation.xorCandidates.length + obfuscation.cryptoConstants.length === 0 ? '<div class="table-empty">No XOR keys or cryptographic constants were recovered.</div>' : ""}
+      </div>
+    </section>
+    <section class="content-card">
+      <div class="card-heading"><h3>CODE-LIKE PATTERNS</h3><span>${obfuscation.shellcode.length} match(es)</span></div>
+      <p>Position-independent code stubs, sleds, and direct syscall gates. These byte sequences also occur naturally in compiled code.</p>
+      <div class="result-table">
+        <div class="signature-head"><span>OFFSET</span><span>PATTERN</span><span>INTERPRETATION</span><span>SEVERITY</span></div>
+        ${obfuscation.shellcode.slice(0, 400).map((item) => `<button class="signature-row" data-jump="${item.offset}"><code>${formatOffset(item.offset)}</code><span>${escapeHtml(item.pattern)}</span><span title="${escapeHtml(item.description)}">${escapeHtml(item.description)}</span><b class="sev-pill sev-${item.severity}">${severityLabel(item.severity)}</b></button>`).join("") || '<div class="table-empty">No shellcode-style patterns were detected.</div>'}
+      </div>
+    </section>
+  </div>
+
+  <section class="content-card">
+    <div class="card-heading"><h3>EMBEDDED EXECUTABLE HEADERS</h3><span>${obfuscation.embeddedExecutables.length} found</span></div>
+    <p>Executable headers located beyond offset zero. Nested images are a common dropper structure and should be carved out for separate analysis.</p>
+    <div class="result-table">${obfuscation.embeddedExecutables.length ? `<div class="result-head"><span>OFFSET</span><span>TYPE</span><span>ACTION</span></div>${obfuscation.embeddedExecutables.slice(0, 400).map((item) => `<button class="result-row" data-jump="${item.offset}"><code>${formatOffset(item.offset)}</code><span>${escapeHtml(item.name)}</span><span>Jump to offset</span></button>`).join("")}` : '<div class="table-empty">No executable headers were found beyond offset zero.</div>'}</div>
+  </section>
+
+  <div class="report-warning">Scores order samples for triage; they are never a detection verdict. Confirm behaviour through dynamic analysis in an isolated environment before acting on any finding in this workspace.</div>
+  </div>`;
 }
 
 function emptyCard(title: string, message: string, button = true): string {
@@ -897,6 +1114,15 @@ function reportPreviewText(tab: EditorTab): string {
     `Analyzed at: ${new Date(analysis.analyzedAt).toLocaleString()}`,
     `Analyst: ${tab.analyst || "Not provided"}`,
     `Case / Project ID: ${tab.caseId || "Not provided"}`,
+    `Evidence number: ${tab.evidenceNumber || "Not provided"}`,
+    `Organization: ${tab.organization || "Not provided"}`,
+    `Classification: ${tab.classification || "Unclassified"}`,
+    "",
+    "=== THREAT ASSESSMENT ===",
+    `Composite score: ${analysis.threat.score}/100 (${analysis.threat.band})`,
+    analysis.threat.summary,
+    ...analysis.threat.findings.slice(0, 20).map((finding) => `  [${finding.severity.toUpperCase()}] ${finding.title} — ${finding.detail}`),
+    analysis.threat.findings.length > 20 ? `  … ${analysis.threat.findings.length - 20} further finding(s)` : "",
     "",
     "=== HASHES ===",
     ...analysis.hashes.map((hash) => `${hash.algorithm}: ${hash.value}`),
@@ -906,6 +1132,9 @@ function reportPreviewText(tab: EditorTab): string {
     `Embedded signatures: ${analysis.signatureHits.length}`,
     `Suspicious regions: ${analysis.suspiciousRegions.length}`,
     `Extracted strings: ${analysis.strings.length}`,
+    `Capability indicators: ${analysis.capabilities.length}`,
+    `Indicators of compromise: ${analysis.iocs.items.length}`,
+    `Packer hints: ${analysis.obfuscation.packerHints.join(", ") || "none"}`,
     "",
     "=== USER / ANALYST NOTES ===",
     tab.notes || "No analyst notes provided.",
@@ -920,7 +1149,39 @@ function renderReportView(): void {
   const tab = activeTab();
   if (!tab) { viewContent.innerHTML = `<div class="content-scroll">${emptyCard("Open a file to generate a PDF report", "The report includes filename, size, detected type, hashes, signature evidence, entropy, strings, suspicious regions, PE information, and analyst notes.")}</div>`; return; }
   const ready = Boolean(tab.analysis);
-  viewContent.innerHTML = `<div class="content-scroll report-view">${analysisProgress(tab)}<section class="content-card"><div class="card-heading"><h3>FORENSIC PDF REPORT GENERATOR</h3><span>${ready ? "AUTOMATIC ANALYSIS COMPLETE" : "WAITING FOR ANALYSIS"}</span></div><p>All report fields populate automatically when the file opens. Add optional analyst metadata and notes, then download a polished paginated PDF.</p><label class="stack-label">User / analyst notes<textarea id="reportNotes" placeholder="Observations, evidence source, handling notes, suspicious offsets…">${escapeHtml(tab.notes)}</textarea></label><div class="report-controls"><input id="reportAnalyst" value="${escapeHtml(tab.analyst)}" placeholder="Analyst name"><input id="reportCaseId" value="${escapeHtml(tab.caseId)}" placeholder="Case / Project ID"><select id="reportDetail"><option value="summary" ${tab.reportDetail === "summary" ? "selected" : ""}>Summary detail</option><option value="standard" ${tab.reportDetail === "standard" ? "selected" : ""}>Standard detail</option><option value="full" ${tab.reportDetail === "full" ? "selected" : ""}>Full detail</option></select></div><div class="inline-controls"><button class="primary" data-action="generate-report" ${ready ? "" : "disabled"}>Download PDF Report</button><button data-action="refresh-report">Refresh Preview</button><span>Structured report generated locally in the browser.</span></div><progress class="report-progress" max="100" value="${ready ? 100 : 10}"></progress><textarea class="report-preview" id="reportPreview" readonly>${escapeHtml(reportPreviewText(tab))}</textarea><div class="report-warning">All calculations and report generation occur locally in the browser. Large-file entropy, string, and signature analysis can require substantial CPU and memory.</div></section></div>`;
+  const threat = tab.analysis?.threat;
+  viewContent.innerHTML = `<div class="content-scroll report-view">${analysisProgress(tab)}
+  <section class="content-card">
+    <div class="card-heading"><h3>FORENSIC DOSSIER GENERATOR</h3><span>${ready ? "ANALYSIS COMPLETE" : "WAITING FOR ANALYSIS"}</span></div>
+    <p>The dossier includes a cover page with a risk gauge, an executive summary, a table of contents, vector entropy and byte-distribution charts, a scored findings register, capability and indicator appendices, a PE section map, a hexadecimal excerpt, and a chain-of-custody continuation block.</p>
+    ${threat ? `<div class="metrics" style="margin-bottom:calc(var(--u) * 3.5)"><article><strong>${threat.score}</strong><small>Threat score</small></article><article><strong>${threat.findings.length}</strong><small>Findings</small></article><article><strong>${tab.analysis?.iocs.items.length ?? 0}</strong><small>Indicators</small></article><article><strong>${tab.analysis?.capabilities.length ?? 0}</strong><small>Capability hits</small></article></div>` : ""}
+
+    <h3 style="margin:0 0 calc(var(--u) * 2);font-size:var(--fs-nano);letter-spacing:.1em;color:var(--faint)">CASE METADATA</h3>
+    <div class="report-controls">
+      <label>Examiner<input id="reportAnalyst" value="${escapeHtml(tab.analyst)}" placeholder="Analyst name"></label>
+      <label>Case / project<input id="reportCaseId" value="${escapeHtml(tab.caseId)}" placeholder="Case or project identifier"></label>
+      <label>Evidence number<input id="reportEvidence" value="${escapeHtml(tab.evidenceNumber)}" placeholder="Exhibit or evidence number"></label>
+      <label>Organization<input id="reportOrganization" value="${escapeHtml(tab.organization)}" placeholder="Laboratory or team"></label>
+      <label>Acquisition method<input id="reportAcquisition" value="${escapeHtml(tab.acquisitionMethod)}" placeholder="How the item was obtained"></label>
+      <label>Classification banner<input id="reportClassification" value="${escapeHtml(tab.classification)}" placeholder="e.g. INTERNAL USE ONLY"></label>
+    </div>
+
+    <label class="stack-label" style="margin-top:calc(var(--u) * 2)">Examiner notes<textarea id="reportNotes" placeholder="Observations, evidence source, handling notes, offsets of interest…">${escapeHtml(tab.notes)}</textarea></label>
+
+    <div class="report-controls">
+      <label>Detail level<select id="reportDetail"><option value="summary" ${tab.reportDetail === "summary" ? "selected" : ""}>Summary — capped tables</option><option value="standard" ${tab.reportDetail === "standard" ? "selected" : ""}>Standard — balanced</option><option value="full" ${tab.reportDetail === "full" ? "selected" : ""}>Full — maximum rows</option></select></label>
+      <label class="checkbox-label" style="align-self:end"><input type="checkbox" id="reportHexExcerpt" ${tab.includeHexExcerpt ? "checked" : ""}> Include hexadecimal excerpt from the cursor</label>
+    </div>
+
+    <div class="inline-controls">
+      <button class="primary" data-action="generate-report" ${ready ? "" : "disabled"}>Download Forensic Dossier (PDF)</button>
+      <button data-action="refresh-report">Refresh Preview</button>
+      <span>Generated locally in this browser. Nothing is uploaded.</span>
+    </div>
+    <progress class="report-progress" max="100" value="${ready ? 100 : 10}"></progress>
+    <textarea class="report-preview" id="reportPreview" readonly>${escapeHtml(reportPreviewText(tab))}</textarea>
+    <div class="report-warning">Large-file entropy, string, and signature analysis can require substantial CPU and memory. Full-detail dossiers on files with many thousands of strings produce correspondingly large PDFs.</div>
+  </section></div>`;
 }
 
 function updateStatusOnly(): void {
@@ -1131,6 +1392,15 @@ function exportStringsCsv(tab: EditorTab): void {
   downloadBlob(new Blob([rows.map((row) => row.map(csvEscape).join(",")).join("\r\n")], { type: "text/csv" }), `${tab.file.name}.strings.csv`);
 }
 
+function exportIocsCsv(tab: EditorTab): void {
+  if (!tab.analysis) return;
+  const rows = [
+    ["Offset", "Type", "Severity", "Value", "Note"],
+    ...tab.analysis.iocs.items.map((item) => [formatOffset(item.offset), item.type, item.severity, item.value, item.note ?? ""])
+  ];
+  downloadBlob(new Blob([rows.map((row) => row.map(csvEscape).join(",")).join("\r\n")], { type: "text/csv" }), `${tab.file.name}.indicators.csv`);
+}
+
 function exportSignaturesCsv(tab: EditorTab): void {
   if (!tab.analysis) return;
   const rows = [["Offset", "Detected Marker", "Extensions", "Confidence"], ...tab.analysis.signatureHits.map((item) => [formatOffset(item.offset), item.name, item.extensions.join(" "), `${Math.round(item.confidence * 100)}%`])];
@@ -1153,24 +1423,60 @@ function syncReportMeta(tab: EditorTab): void {
   tab.notes = document.querySelector<HTMLTextAreaElement>("#reportNotes")?.value ?? tab.notes;
   tab.analyst = document.querySelector<HTMLInputElement>("#reportAnalyst")?.value ?? tab.analyst;
   tab.caseId = document.querySelector<HTMLInputElement>("#reportCaseId")?.value ?? tab.caseId;
+  tab.evidenceNumber = document.querySelector<HTMLInputElement>("#reportEvidence")?.value ?? tab.evidenceNumber;
+  tab.organization = document.querySelector<HTMLInputElement>("#reportOrganization")?.value ?? tab.organization;
+  tab.acquisitionMethod = document.querySelector<HTMLInputElement>("#reportAcquisition")?.value ?? tab.acquisitionMethod;
+  tab.classification = document.querySelector<HTMLInputElement>("#reportClassification")?.value ?? tab.classification;
+  tab.includeHexExcerpt = document.querySelector<HTMLInputElement>("#reportHexExcerpt")?.checked ?? tab.includeHexExcerpt;
   tab.reportDetail = (document.querySelector<HTMLSelectElement>("#reportDetail")?.value ?? tab.reportDetail) as EditorTab["reportDetail"];
 }
 
-function generateReport(): void {
+const REPORT_LIMITS = {
+  summary: { strings: 120, signatures: 120, regions: 60, iocs: 120, capabilities: 80, excerpt: 256 },
+  standard: { strings: 400, signatures: 250, regions: 150, iocs: 400, capabilities: 250, excerpt: 512 },
+  full: { strings: 4000, signatures: 3000, regions: 1000, iocs: 3000, capabilities: 1500, excerpt: 1024 }
+} as const;
+
+async function generateReport(): Promise<void> {
   const tab = activeTab();
   if (!tab?.analysis) { toast("Wait for automatic analysis to complete.", "error"); return; }
   syncReportMeta(tab);
-  const limits = tab.reportDetail === "summary" ? { strings: 100, signatures: 100, regions: 60 } : tab.reportDetail === "full" ? { strings: 5000, signatures: 5000, regions: 1000 } : { strings: 750, signatures: 500, regions: 300 };
-  savePdfReport(tab.analysis, {
-    title: "HexForge Studio Pro — Forensic Binary Report",
-    userNotes: tab.notes,
-    analystName: tab.analyst,
-    caseId: tab.caseId,
-    includeStrings: limits.strings,
-    includeSignatures: limits.signatures,
-    includeEntropyRegions: limits.regions
-  });
-  toast("PDF report generated.", "success");
+  const limits = REPORT_LIMITS[tab.reportDetail];
+
+  // The excerpt is read on demand so the analysis payload never carries raw bytes.
+  let hexExcerpt: { offset: number; bytes: number[] } | undefined;
+  if (tab.includeHexExcerpt && tab.file.size > 0) {
+    const bounds = selectionBounds(tab);
+    const start = bounds && bounds.length > 1 ? bounds.start : Math.max(0, tab.cursor);
+    const length = Math.min(limits.excerpt, tab.file.size - start, bounds && bounds.length > 1 ? bounds.length : limits.excerpt);
+    hexExcerpt = { offset: start, bytes: [...await readRange(tab, start, length)] };
+  }
+
+  const button = document.querySelector<HTMLButtonElement>("[data-action='generate-report']");
+  if (button) { button.disabled = true; button.textContent = "Building dossier…"; }
+  try {
+    savePdfReport(tab.analysis, {
+      title: "Forensic Binary Analysis Dossier",
+      userNotes: tab.notes,
+      analystName: tab.analyst,
+      caseId: tab.caseId,
+      organization: tab.organization,
+      evidenceNumber: tab.evidenceNumber,
+      acquisitionMethod: tab.acquisitionMethod,
+      classification: tab.classification,
+      includeStrings: limits.strings,
+      includeSignatures: limits.signatures,
+      includeEntropyRegions: limits.regions,
+      includeIocs: limits.iocs,
+      includeCapabilities: limits.capabilities,
+      hexExcerpt
+    });
+    toast("Forensic dossier generated.", "success");
+  } catch (error) {
+    toast(`Report generation failed: ${error instanceof Error ? error.message : String(error)}`, "error");
+  } finally {
+    renderReportView();
+  }
 }
 
 function refreshReportPreview(): void {
@@ -1214,6 +1520,7 @@ function handleCommand(command: string): void {
   else if (command === "goto") goToPrompt();
   else if (command === "insert") void insertBytes();
   else if (command === "delete") void deleteSelection();
+  else if (command === "intel") { activeView = "intel"; updateAll(); }
   else if (command === "forensics") { activeView = "forensics"; updateAll(); }
   else if (command === "compare") { activeView = "comparison"; updateAll(); }
   else if (command === "report") { activeView = "report"; updateAll(); }
@@ -1234,6 +1541,17 @@ app.addEventListener("click", (event) => {
   if (byteOffset !== undefined) { setCursor(Number(byteOffset), (event as MouseEvent).shiftKey, false); return; }
   const jump = target.closest<HTMLElement>("[data-jump]")?.dataset.jump;
   if (jump !== undefined) { activeView = "hex"; setCursor(Number(jump)); return; }
+  const iocFilter = target.closest<HTMLButtonElement>("[data-ioc-filter]")?.dataset.iocFilter;
+  if (iocFilter) {
+    const tab = activeTab();
+    if (tab?.analysis) {
+      tab.iocFilter = iocFilter as IocType | "all";
+      const table = document.querySelector<HTMLDivElement>("#iocTable");
+      if (table) table.innerHTML = renderIocTable(tab.analysis, tab.iocFilter);
+      document.querySelectorAll<HTMLButtonElement>("[data-ioc-filter]").forEach((button) => button.classList.toggle("active", button.dataset.iocFilter === iocFilter));
+    }
+    return;
+  }
   const copy = target.closest<HTMLElement>("[data-copy]")?.dataset.copy;
   if (copy) { void navigator.clipboard.writeText(copy).then(() => toast("Copied.", "success")); return; }
   const inputMode = target.closest<HTMLButtonElement>("[data-input-mode]")?.dataset.inputMode as InputMode | undefined;
@@ -1267,12 +1585,14 @@ app.addEventListener("click", (event) => {
   else if (action === "run-search") void runSearch();
   else if (action === "export-strings" && tab) exportStringsCsv(tab);
   else if (action === "export-signatures" && tab) exportSignaturesCsv(tab);
+  else if (action === "export-iocs" && tab) exportIocsCsv(tab);
+  else if (action === "toggle-theme") { theme = toggleTheme(theme); toast(`Switched to the ${theme} console theme.`, "success"); }
   else if (action === "export-source") void exportSource();
   else if (action === "choose-compare") compareInput.click();
   else if (action === "run-tab-compare" && tab) { const selected = document.querySelector<HTMLSelectElement>("#compareTabSelect")?.value; const other = tabs.find((item) => item.id === selected); if (other) void compareWith(currentEffectiveFile(other)); else toast("Choose another open tab or load an external comparison file.", "error"); }
   else if (action === "previous-difference" && tab?.differences.length) { const previous = [...tab.differences].reverse().find((item) => item.offset < tab.cursor) ?? tab.differences.at(-1); if (previous) setCursor(previous.offset); }
   else if (action === "next-difference" && tab?.differences.length) { const next = tab.differences.find((item) => item.offset > tab.cursor) ?? tab.differences[0]; if (next) setCursor(next.offset); }
-  else if (action === "generate-report") generateReport();
+  else if (action === "generate-report") void generateReport();
   else if (action === "refresh-report") refreshReportPreview();
 });
 
@@ -1284,7 +1604,7 @@ app.addEventListener("input", (event) => {
     const results = document.querySelector<HTMLDivElement>("#stringResults");
     if (tab?.analysis && results) results.innerHTML = renderStrings(tab.analysis, target.value);
   }
-  if (["reportNotes", "reportAnalyst", "reportCaseId", "reportDetail"].includes(target.id)) {
+  if (target.id.startsWith("report")) {
     const tab = activeTab();
     if (tab) syncReportMeta(tab);
   }
