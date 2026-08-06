@@ -3,7 +3,9 @@
 
 # HexForge Studio Pro
 
-**Local-first browser hex editing and forensic binary analysis.**
+**A local-first binary forensics workstation that runs entirely in your browser.**
+
+Hex editing, file identification, threat scoring, and handover-ready reporting — with no backend, no upload, and no telemetry.
 
 [![CI](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/actions/workflows/ci.yml/badge.svg)](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/actions/workflows/codeql.yml/badge.svg)](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/actions/workflows/codeql.yml)
@@ -13,133 +15,202 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-All%20rights%20reserved-lightgrey.svg)](LICENSE)
 
-[**Launch the application**](https://d3v4nshpat3l.github.io/HexForge-Studio-Pro/) · [Report a bug](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/issues/new?template=bug_report.yml) · [Request a feature](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/issues/new?template=feature_request.yml)
+### [**▶ Launch the application**](https://d3v4nshpat3l.github.io/HexForge-Studio-Pro/)
+
+[Report a bug](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/issues/new?template=bug_report.yml) · [Request a feature](https://github.com/D3v4nshPat3l/HexForge-Studio-Pro/issues/new?template=feature_request.yml) · [Changelog](CHANGELOG.md)
+
 </div>
 
-> [!IMPORTANT]
-> Files are processed locally in the browser for the core editing and analysis workflow. HexForge Studio Pro does not require a backend to open, inspect, modify, analyze, compare, or export files.
+---
 
 ![Hex editor interface](docs/screenshots/hex-editor.png)
 
-## Overview
+## Why this exists
 
-HexForge Studio Pro is a browser-based binary workstation for developers, reverse engineers, security researchers, incident responders, and digital-forensics practitioners. It combines a virtualized hex editor with search, file identification, hashing, entropy analysis, string extraction, comparison, executable inspection, a weighted threat-assessment engine, and a paginated PDF forensic dossier.
+Most binary analysis workflows start by uploading a sample to somebody else's server. That is a non-starter when the file is evidence, contains customer data, or is suspected malware you are not permitted to redistribute.
 
-The editor is designed around range-based file reads and sparse modifications rather than placing an entire file into application state. Analysis, search, and threat scoring run in a Web Worker to keep the interface responsive during heavier workloads.
+HexForge Studio Pro performs the entire workflow client-side. Files are read through `Blob.slice()` range requests and never leave the browser process — there is no upload endpoint to send them to.
 
-## Why HexForge Studio Pro?
+<table>
+<tr><td width="50%">
 
-| Capability | What it provides |
-| --- | --- |
-| **Local-first operation** | Core processing remains on the analyst's device and does not depend on an application server. |
-| **Large-file-oriented editing** | Continuous virtualized scrolling renders visible rows with a small buffer instead of building a full-file DOM view. |
-| **Forensic analysis workflow** | Identification, hashes, entropy, strings, embedded signatures, comparison, notes, and PDF reporting are available in one workspace. |
-| **Triage-oriented threat scoring** | Capability tagging, indicator extraction, and obfuscation detection roll into one capped, weighted score with per-finding analyst guidance. |
-| **Non-destructive editing model** | Sparse patches are overlaid on range reads until the user explicitly saves or exports the modified bytes. |
-| **Display-scale aware interface** | A dark forensic console with a light mode, built on fluid scales that gain density on 4K and ultrawide panels. |
-| **Portable deployment** | The application can run through Vite locally or as a static GitHub Pages site. |
+**🔒 Local-first by construction**
 
-## Core capabilities
+No server component exists. Range-based reads and sparse patches mean a multi-gigabyte image is never held in memory.
 
-### Hex editing and workspace
+</td><td width="50%">
 
-- Continuous virtualized full-file hexadecimal and character views
+**⚡ Built for large files**
+
+Virtualized scrolling renders only visible rows. Analysis runs in a Web Worker, so the interface never blocks.
+
+</td></tr>
+<tr><td width="50%">
+
+**🎯 Triage-oriented scoring**
+
+Capability tagging, indicator extraction, and obfuscation detection collapse into one capped, explainable score.
+
+</td><td width="50%">
+
+**📄 Reports you can hand over**
+
+A paginated dossier with vector charts, a verified table of contents, and a chain-of-custody block.
+
+</td></tr>
+</table>
+
+---
+
+## Feature tour
+
+<details open>
+<summary><b>Hex editing and workspace</b></summary>
+<br>
+
+- Continuous virtualized hexadecimal and character views across the whole file
 - Pinned offset and character columns with high-visibility scrollbars
-- Multiple workspace tabs and drag-and-drop file opening
-- New-file creation, save, export, undo, and redo
+- Multiple workspace tabs, drag-and-drop opening, and new-file creation
 - Overwrite, insert, delete, fill, invert, and randomize operations
-- Byte selections, cursor navigation, and regional operations
-- Character rendering modes for Windows-1252, Latin-1, and ASCII
-- Bit editor, base converter, and source-code export
+- Non-destructive model: sparse patches overlay range reads until you explicitly save
+- Full undo and redo, byte selections, and regional operations
+- Character rendering for Windows-1252, Latin-1, and ASCII
+- Bit editor, base converter (radix 2–36), and source-code export for nine languages
 
-### Search and navigation
+</details>
 
-- Hexadecimal byte-pattern search
-- Wildcard byte search
-- Text and regular-expression search
-- Signed and unsigned integer search
-- Floating-point search
-- Navigable results and difference ranges
-- Stack-safe ASCII, UTF-8, UTF-16LE, and UTF-16BE string extraction
+<details open>
+<summary><b>Search and navigation</b></summary>
+<br>
+
+| Mode | Notes |
+| --- | --- |
+| Hex pattern | Supports `??` wildcard bytes |
+| Text | UTF-8, UTF-16LE, UTF-16BE; optional case-insensitivity |
+| Regular expression | Capped at 64 MiB — see the note below |
+| Integer | Signed and unsigned, 1/2/4/8 bytes, either endianness |
+| Floating point | 32-bit and 64-bit |
+
+Find-and-replace operates across the whole file behind an equal-length guard. String extraction is stack-safe across ASCII, UTF-8, UTF-16LE, and UTF-16BE, with original byte offsets preserved.
 
 > [!NOTE]
-> Regular-expression search is intentionally limited to 64 MiB because character-to-byte offset mapping becomes expensive at larger sizes. Byte and text searches remain the preferred options for large files.
+> Regular-expression search is deliberately limited to 64 MiB because character-to-byte offset mapping becomes expensive beyond that point. Byte and text search remain the right tools for large files.
 
-### Automated analysis
+</details>
 
-- Conservative file-signature identification
-- File-extension consistency checks
-- Embedded-file signature scanning
-- MD5, SHA-1, SHA-256, SHA-512, BLAKE3, and CRC-32 hashes
-- Whole-file and selected-region entropy with an adaptive window
+<details open>
+<summary><b>Automated analysis</b></summary>
+<br>
+
+- Conservative file-signature identification with confidence scoring and stated evidence
+- File-extension consistency checking
+- Embedded-signature scanning across the entire configured range, not only offset zero
+- MD5, SHA-1, SHA-256, SHA-512, BLAKE3, and CRC-32
+- Shannon entropy, whole-file and per-window, with an adaptive window size
 - Suspicious high-entropy region detection
 - Full-file byte frequency distribution
-- PE/COFF structural analysis
+- PE/COFF structural parsing: architecture, subsystem, entry point, image base, section table
 - Browser-native image preview for decoder-supported formats
-- Binary comparison with navigable difference ranges
+- Byte-accurate binary comparison with navigable difference ranges
 
-### Threat intelligence
+</details>
 
-- Composite 0–100 threat score with a six-band triage classification
-- Weighted findings register with per-category score caps
-- Capability tagging across 14 behaviour classes: anti-debugging, sandbox evasion, code injection, privilege escalation, persistence, credential access, keylogging, network staging, cryptography, destructive/ransomware actions, discovery, defence evasion, and interpreter staging
-- Indicator-of-compromise extraction: URLs, IPv4/IPv6, domains, emails, registry keys, filesystem paths, Base64 blobs, GUIDs, cryptocurrency wallets, living-off-the-land command lines, and hard-coded user agents
-- Single-byte XOR key recovery with decoded-header evidence
-- Packer and protector detection (UPX, Themida, VMProtect, ASPack, Enigma, ConfuserEx, PyInstaller, and others)
-- Cryptographic constant-table identification (AES, MD5, SHA-1/256/512, CRC-32, Blowfish, ChaCha20/Salsa20, TEA)
-- Position-independent code detection: GetPC stubs, PEB walks, direct syscall gates, NOP and INT3 sleds
+<details open>
+<summary><b>🛡️ Threat intelligence <sub><i>new in 3.0</i></sub></b></summary>
+<br>
+
+A composite **0–100 score** across six triage bands, assembled from four independent signal sources.
+
+**Capability tagging** — string literals matched against a curated table spanning 14 behaviour classes:
+
+`anti-debugging` · `sandbox evasion` · `execution stalling` · `code injection` · `privilege escalation` · `persistence` · `credential access` · `keylogging & surveillance` · `network / C2` · `cryptography` · `destructive & ransomware` · `discovery` · `defence evasion` · `interpreter staging`
+
+**Indicator extraction** — URLs, IPv4/IPv6, domains, emails, registry keys, filesystem paths, Base64 blobs, GUIDs, cryptocurrency wallets, living-off-the-land command lines, and hard-coded user agents. Every indicator keeps its byte offset, so one click jumps to it in the hex view. Exports to CSV.
+
+**Obfuscation and anti-analysis** —
+
+- Single-byte XOR key recovery, scored on whether the decoding reveals a genuine header (MZ, ELF, ZIP, PNG) or the DOS stub text
+- Packer and protector fingerprinting: UPX, Themida/WinLicense, VMProtect, ASPack, PECompact, Enigma, MPRESS, Obsidium, ConfuserEx, PyInstaller, Nuitka, and others
+- Cryptographic constant tables: AES S-boxes, MD5/SHA-1/SHA-256/SHA-512 initialisers, CRC-32, Blowfish, ChaCha20/Salsa20, TEA
+- Position-independent code: GetPC stubs, FNSTENV tricks, PEB walks (x86 and x64), direct syscall gates, NOP and INT3 sleds
 - Entropy discontinuity mapping and embedded-executable carving targets
 
+**Scoring** — each signal becomes a weighted finding carrying a severity, its contributing weight, the offsets involved, and written analyst guidance. Categories are capped independently, so a single noisy signal cannot dominate the total.
+
 > [!IMPORTANT]
-> The threat score orders samples for triage. It is not a malware verdict. A capability match proves a string is present, not that the corresponding API is imported, reachable, or ever executed.
+> **The score orders samples for triage. It is not a verdict.**
+> A capability match proves a string is present in the file — not that the API is imported, reachable, or ever executed. Compiler artefacts, embedded documentation, and unused library code all produce matches. Confirm behaviour through dynamic analysis in an isolated environment before acting on any finding.
 
-### Reporting
+</details>
 
-- Paginated forensic dossier with a cover page and risk gauge
-- Executive summary, severity distribution, and score composition by category
-- Auto-generated table of contents with verified page references
-- Vector charts: entropy profile, byte histogram, PE section map, category bars
-- Findings register with severity pills, contributing weights, and analyst guidance
-- Capability and indicator appendices with preserved byte offsets
-- Chain-of-custody continuation block and case/acquisition record
-- Hexadecimal excerpt from the cursor or current selection
-- Optional classification banner stamped on the cover and every page
-- Per-page SHA-256 footer, headers, and page numbering
-- Three detail levels with explicit counts for omitted rows
+<details open>
+<summary><b>📄 Forensic dossier <sub><i>new in 3.0</i></sub></b></summary>
+<br>
 
-### Workspace
+| Section | Contents |
+| --- | --- |
+| **Cover** | Vector risk gauge, case metadata, SHA-256, optional classification banner |
+| **Executive summary** | Score composition by category, severity distribution, examiner notes |
+| **Contents** | Auto-generated, with page numbers verified by test |
+| **Case record** | Evidence number, acquisition method, chain-of-custody continuation block |
+| **Identification** | Detection evidence with confidence and basis; extension-mismatch callout |
+| **Integrity** | Full hash set |
+| **Findings** | Severity-ordered register with weights, offsets, and guidance |
+| **Capabilities** | Category rollup plus individual indicator hits |
+| **Indicators** | Grouped by type, with severities and notes |
+| **Obfuscation** | XOR keys, packers, crypto constants, code patterns, entropy cliffs |
+| **Entropy** | Vector entropy profile and a 256-bar byte histogram |
+| **PE structure** | Proportional section map plus the full section table with R/W/X flags |
+| **Appendices** | Signature scan, extracted strings, hex excerpt, methodology and limitations |
+
+Charts are drawn with jsPDF path operations rather than rasterised images, so they stay sharp at any zoom level and cost only a few kilobytes each. Three detail levels control table caps, and omitted-row counts are always stated explicitly.
+
+</details>
+
+<details open>
+<summary><b>🎨 Interface</b></summary>
+<br>
 
 - Dark forensic console theme with a light mode, persisted per browser
-- Fluid type and spacing scales that gain density on 1440p, 4K, and ultrawide displays
+- Fluid type and spacing scales, so 1440p, 4K, and ultrawide displays gain **density** rather than empty space
+- Verified free of horizontal overflow at 1366, 1920, and 3840 px wide in both themes
+- Keyboard-driven: `Ctrl O/S/F/H/G/Z/Y/A` plus arrow, Page, Home, and End navigation
+- Respects `prefers-reduced-motion` and `prefers-color-scheme`
 
-## Forensics lab
+</details>
 
-![Forensics lab](docs/screenshots/forensics-lab.png)
+---
 
-## PDF report
+## Quick start
 
-![PDF report](docs/screenshots/pdf-report.png)
+```bash
+git clone https://github.com/D3v4nshPat3l/HexForge-Studio-Pro.git
+cd HexForge-Studio-Pro
+npm ci
+npm run dev
+```
 
-## Format compatibility
+Open the address Vite prints, normally `http://localhost:5173`.
 
-Every regular file can be opened as bytes and used with the general-purpose hex viewing, editing, searching, hashing, entropy, string extraction, comparison, export, and reporting features.
+**Requirements** — Node.js 20.19 or later (22 LTS recommended), npm 10 or later, and a current Chromium, Firefox, or Safari build.
 
-Specialized identification or structural intelligence is available across a broad range of formats, including:
+### Commands
 
-| Category | Examples |
+| Command | Purpose |
 | --- | --- |
-| Images and camera RAW | PNG, JPEG, GIF, BMP, TIFF, ICO, PSD, SVG, JPEG 2000, OpenEXR, CR2, NEF, ARW, DNG, ORF, RW2, RAF, and CR3 |
-| Archives and compression | TAR, ZIP and ZIP-derived containers, GZIP, BZIP2, XZ, 7-Zip, RAR, and CAB |
-| Disk and virtual-disk images | ISO 9660, DMG, VHD, VHDX, and QCOW2 |
-| Audio and video | WAV, FLAC, OGG, AAC, AIFF/AIFC, MIDI, AVI, MKV, WebM, MPEG, FLV, WMV/ASF, and MP3 |
-| Executables and firmware | PE/COFF, ELF, Mach-O, Java Class, Android DEX, UEFI firmware volumes, EFI images, U-Boot images, and Linux x86 bzImage |
-| Documents and structured data | PDF, PostScript/EPS, EPUB, CHM, DjVu, XML, HTML, JSON, CSV, ODS, ODP, and plain text |
-| Encoded firmware records | Intel HEX and Motorola S-record |
+| `npm run dev` | Start the Vite development server on all local interfaces |
+| `npm run typecheck` | TypeScript validation without emitting files |
+| `npm test` | Run the Vitest suite once |
+| `npm run build` | Type-check and build the production bundle into `dist/` |
+| `npm run preview` | Serve the production build for verification |
 
-See [Supported formats](SUPPORTED_FORMATS.md) for the detailed compatibility statement.
+Run the full sequence before publishing changes:
 
-> [!CAUTION]
-> Raw-byte compatibility does not imply complete decoding, decompression, filesystem parsing, or rendered preview. Proprietary, encrypted, damaged, vendor-specific, undocumented, or deliberately disguised files may require dedicated tooling.
+```bash
+npm run typecheck && npm test && npm run build
+```
+
+---
 
 ## Architecture
 
@@ -169,120 +240,113 @@ flowchart LR
     K --> L
 ```
 
-The main UI thread owns tabs, cursor navigation, virtual rendering, sparse edits, report orchestration, and export state. The worker handles automatic analysis, search, and comparison away from the UI thread. See [Architecture](ARCHITECTURE.md) for implementation details.
+The main thread owns tabs, cursor navigation, virtual rendering, sparse edits, and export state. The worker handles analysis, search, comparison, and threat scoring. See [ARCHITECTURE.md](ARCHITECTURE.md) for implementation detail.
 
-## Requirements
+**Two design decisions worth knowing:**
 
-- Node.js 20.19 or later; Node.js 22 LTS is recommended
-- npm 10 or later
-- A current version of Microsoft Edge, Google Chrome, Firefox, or another modern browser
+- **Entropy windowing adapts to file size**, targeting roughly 256 windows with a 4 KiB floor. The floor is not arbitrary: Shannon entropy over `n` samples is bounded by `log2(n)`, so smaller windows could never reach the 7.35/7.75 suspicion thresholds and would silently suppress every region.
+- **Byte-level scanning is bounded by a probe budget** rather than file size, keeping cost flat. When a file exceeds the budget, scanning falls back to evenly spaced probes and both the interface and the report disclose this through `scanLimited`.
 
-## Quick start
+---
 
-```bash
-git clone https://github.com/D3v4nshPat3l/HexForge-Studio-Pro.git
-cd HexForge-Studio-Pro
-npm ci
-npm run dev
-```
+## Screenshots
 
-Open the address printed by Vite, normally `http://localhost:5173`.
+<table>
+<tr>
+<td width="50%"><b>Forensics lab</b><br><img src="docs/screenshots/forensics-lab.png" alt="Forensics lab"></td>
+<td width="50%"><b>PDF dossier</b><br><img src="docs/screenshots/pdf-report.png" alt="PDF report"></td>
+</tr>
+</table>
 
-### Available commands
+---
 
-| Command | Purpose |
+## Format compatibility
+
+Any file can be opened as bytes and used with the general-purpose editing, search, hashing, entropy, string, comparison, export, and reporting features.
+
+Specialized identification or structural intelligence covers:
+
+| Category | Formats |
 | --- | --- |
-| `npm run dev` | Start the Vite development server on all local interfaces |
-| `npm run typecheck` | Run TypeScript validation without emitting files |
-| `npm test` | Run the Vitest test suite once |
-| `npm run build` | Type-check and create the production bundle in `dist/` |
-| `npm run preview` | Serve the production build locally for verification |
+| **Images and camera RAW** | PNG, JPEG, GIF, BMP, TIFF, ICO, PSD, SVG, JPEG 2000, OpenEXR, CR2, NEF, ARW, DNG, ORF, RW2, RAF, CR3 |
+| **Archives and compression** | TAR, ZIP and derivatives, GZIP, BZIP2, XZ, 7-Zip, RAR, CAB |
+| **Disk and virtual disk** | ISO 9660, DMG, VHD, VHDX, QCOW2 |
+| **Audio and video** | WAV, FLAC, OGG, AAC, AIFF/AIFC, MIDI, AVI, MKV, WebM, MPEG, FLV, WMV/ASF, MP3 |
+| **Executables and firmware** | PE/COFF, ELF, Mach-O, Java Class, Android DEX, UEFI firmware volumes, EFI, U-Boot, Linux bzImage |
+| **Documents and structured data** | PDF, PostScript/EPS, EPUB, CHM, DjVu, XML, HTML, JSON, CSV, ODS, ODP, plain text |
+| **Encoded firmware records** | Intel HEX, Motorola S-record |
 
-### Windows workspace example
+See [SUPPORTED_FORMATS.md](SUPPORTED_FORMATS.md) for the detailed compatibility statement.
 
-```bat
-cd /d "D:\Hex Forge Studio"
-npm ci --no-audit --no-fund
-npm run dev
-```
+> [!CAUTION]
+> Raw-byte compatibility does not imply complete decoding, decompression, filesystem parsing, or rendered preview. Proprietary, encrypted, damaged, vendor-specific, undocumented, or deliberately disguised files may require dedicated tooling.
 
-See the [Windows installation guide](SETUP_GUIDE_WINDOWS.md) for a fuller setup walkthrough.
-
-## Verification
-
-Run the complete local verification sequence before publishing changes:
-
-```bash
-npm run typecheck
-npm test
-npm run build
-```
-
-The production output is written to `dist/`.
-
-## GitHub Pages deployment
-
-The repository includes `.github/workflows/deploy-pages.yml`.
-
-1. Open the repository's **Settings → Pages** page.
-2. Select **GitHub Actions** as the deployment source.
-3. Push to `main`.
-4. The workflow builds and publishes the static application.
-
-Deployment URL:
-
-```text
-https://d3v4nshpat3l.github.io/HexForge-Studio-Pro/
-```
+---
 
 ## Recommended forensic workflow
 
 1. Preserve the original evidence and work from a verified copy.
-2. Calculate and record independent cryptographic hashes before analysis.
-3. Open the working copy in HexForge Studio Pro and document relevant offsets, signatures, strings, and entropy regions.
-4. Record analyst notes and export a PDF report for review.
-5. Recalculate hashes for any exported or intentionally modified artifact.
-6. Maintain chain-of-custody records outside the application according to your organization's procedures.
+2. Calculate and record independent cryptographic hashes **before** analysis.
+3. Open the working copy and review the threat workspace for triage ordering.
+4. Investigate flagged offsets in the hex view, confirming or dismissing each finding.
+5. Record examiner notes and case metadata, then export the dossier.
+6. Recalculate hashes for any exported or intentionally modified artifact.
+7. Maintain chain-of-custody records outside the application per your organization's procedures.
 
-## Privacy, security, and evidentiary limitations
+---
 
-HexForge Studio Pro is an analysis aid, not a substitute for validated forensic tooling, malware sandboxing, specialist parsers, or expert review. Signature matches and suspicious-region indicators are evidence-based leads, not proof of file type, provenance, trustworthiness, or malicious behavior.
+## Limitations and evidentiary notice
 
-Browser-native preview depends on the active browser's decoders. Archive listing, decompression, disk-image filesystem parsing, proprietary RAW rendering, and architecture-specific firmware analysis require additional parsers and resource controls. Files designed to trigger decompression bombs, parser edge cases, or excessive resource consumption should be handled in an appropriately isolated environment.
+HexForge Studio Pro is an **analysis aid**. It is not accredited forensic software, not a malware scanner, and not a substitute for expert review.
 
-Review the [known limitations](KNOWN_LIMITATIONS.md) and [security policy](SECURITY.md) before using the application in a production investigation.
+**What it does not do:** execute, emulate, unpack, decompress, decrypt, or sandbox a sample. It does not parse archive members or filesystems inside disk images, does not resolve indicators against threat intelligence, and performs no import-table or control-flow analysis.
+
+**Interpretation constraints:** high entropy is produced by ordinary compression and encryption as readily as by packing. Signature matches inside container formats are expected. Indicator strings appear routinely in benign software.
+
+Files designed to trigger decompression bombs, parser edge cases, or excessive resource consumption should be handled in an appropriately isolated environment. Review [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) and [SECURITY.md](SECURITY.md) before using this in a production investigation.
+
+---
 
 ## Documentation
 
 | Document | Purpose |
 | --- | --- |
-| [Windows installation](SETUP_GUIDE_WINDOWS.md) | Set up and run the project on Windows |
-| [GitHub publishing guide](GITHUB_SETUP_WINDOWS.md) | Publish and deploy the repository from Windows |
-| [Architecture](ARCHITECTURE.md) | Understand the UI, worker, analysis, editor, and report design |
-| [Integration notes](INTEGRATION.md) | Review component and integration guidance |
-| [Supported formats](SUPPORTED_FORMATS.md) | See raw-byte and specialized format compatibility |
-| [Known limitations](KNOWN_LIMITATIONS.md) | Understand intentional constraints and unsupported workflows |
-| [Contributing](CONTRIBUTING.md) | Prepare changes and submit contributions |
-| [Security policy](SECURITY.md) | Report vulnerabilities responsibly |
-| [Changelog](CHANGELOG.md) | Review notable changes by release |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | UI, worker, analysis, security, and report design |
+| [SUPPORTED_FORMATS.md](SUPPORTED_FORMATS.md) | Raw-byte and specialized format compatibility |
+| [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | Intentional constraints and unsupported workflows |
+| [SETUP_GUIDE_WINDOWS.md](SETUP_GUIDE_WINDOWS.md) | Windows setup walkthrough |
+| [GITHUB_SETUP_WINDOWS.md](GITHUB_SETUP_WINDOWS.md) | Publishing and deploying from Windows |
+| [INTEGRATION.md](INTEGRATION.md) | Component and integration guidance |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Repository conventions and submission expectations |
+| [SECURITY.md](SECURITY.md) | Responsible vulnerability disclosure |
+| [CHANGELOG.md](CHANGELOG.md) | Notable changes by release |
+
+---
+
+## Deployment
+
+The repository ships `.github/workflows/deploy-pages.yml`. In **Settings → Pages**, select **GitHub Actions** as the source, then push to `main`. The workflow builds and publishes the static application to:
+
+```text
+https://d3v4nshpat3l.github.io/HexForge-Studio-Pro/
+```
+
+---
 
 ## Contributing
 
-Contributions, defect reports, and focused feature proposals are welcome through GitHub. Before submitting a pull request:
+Contributions, defect reports, and focused feature proposals are welcome through GitHub. Before opening a pull request:
 
 ```bash
-npm ci
-npm run typecheck
-npm test
-npm run build
+npm ci && npm run typecheck && npm test && npm run build
 ```
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) for repository conventions and submission expectations.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for repository conventions. For security-sensitive findings, **do not open a public issue** — follow the private reporting process in [SECURITY.md](SECURITY.md).
 
-For security-sensitive findings, do not open a public issue. Follow the private reporting process described in [SECURITY.md](SECURITY.md).
+---
 
 ## License
 
 Copyright © 2026 Devansh Patel. All rights reserved.
 
-This repository is not distributed under an open-source license. See [LICENSE](LICENSE) for the controlling terms.
+This repository is **not** distributed under an open-source license. See [LICENSE](LICENSE) for the controlling terms.
