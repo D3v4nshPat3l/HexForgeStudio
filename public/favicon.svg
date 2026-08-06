@@ -1,6 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7ee0ff"/><stop offset=".5" stop-color="#2184c6"/><stop offset="1" stop-color="#071c31"/></linearGradient><filter id="gl"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-  <path d="M32 2 58 16v32L32 62 6 48V16Z" fill="#06192b" stroke="url(#g)" stroke-width="3"/>
-  <path d="M19 18v28M45 18v28M19 32h26" stroke="#e1f7ff" stroke-width="5" stroke-linecap="round" filter="url(#gl)"/>
-  <circle cx="32" cy="9" r="3" fill="#7ee0ff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HexForge">
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#1b2f47"/>
+      <stop offset="0.55" stop-color="#101d2e"/>
+      <stop offset="1" stop-color="#070d16"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7cd8ff"/>
+      <stop offset="0.45" stop-color="#2e9fe8"/>
+      <stop offset="1" stop-color="#0d4d7d"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#9fdcff"/>
+    </linearGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Hex plate -->
+  <path d="M32 3.5 55.5 17v30L32 60.5 8.5 47V17Z" fill="url(#plate)"/>
+  <path d="M32 3.5 55.5 17v30L32 60.5 8.5 47V17Z" fill="none" stroke="url(#edge)" stroke-width="2.6" stroke-linejoin="round"/>
+
+  <!-- Top bevel highlight -->
+  <path d="M32 6.6 52.8 18.5 32 30.4 11.2 18.5Z" fill="#ffffff" opacity="0.06"/>
+
+  <!-- H monogram, forged from two hex columns and a bridge -->
+  <g filter="url(#soft)">
+    <rect x="19.4" y="19" width="5.2" height="26" rx="2.6" fill="url(#bar)"/>
+    <rect x="39.4" y="19" width="5.2" height="26" rx="2.6" fill="url(#bar)"/>
+    <rect x="19.4" y="29.4" width="25.2" height="5.2" rx="2.6" fill="url(#bar)"/>
+  </g>
+
+  <!-- Scan accent -->
+  <circle cx="32" cy="32" r="2.4" fill="#0a1626"/>
+  <circle cx="32" cy="32" r="1.1" fill="#7cd8ff"/>
 </svg>

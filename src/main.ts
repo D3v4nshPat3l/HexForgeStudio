@@ -1,4 +1,4 @@
-import "./styles.css";
+import { BRAND_MARK } from "./brand";
 import { FileByteSource } from "./byte-source";
 import { HexWorkerClient } from "./worker-client";
 import { buildPdfReport, savePdfReport } from "./report/pdf-report";
@@ -80,31 +80,21 @@ const HEX_ROW_HEIGHT = 28;
 const MAX_HEX_SCROLL_HEIGHT = 30_000_000;
 const HEX_OVERSCAN_ROWS = 12;
 
-const app = document.querySelector<HTMLDivElement>("#app");
-if (!app) throw new Error("Application root is missing.");
-
+// Assigned by mountWorkstation(). The workstation is loaded lazily from the router,
+// so none of this may touch the DOM at import time.
+let app!: HTMLDivElement;
 let theme: ThemeName = resolveInitialTheme();
-applyTheme(theme);
 
-const logoSvg = `
-<svg viewBox="0 0 64 64" aria-hidden="true">
-  <defs>
-    <linearGradient id="forgeG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#69c3ff"/><stop offset=".48" stop-color="#237ebd"/><stop offset="1" stop-color="#0d3154"/></linearGradient>
-    <filter id="forgeGlow"><feGaussianBlur stdDeviation="1.7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-  </defs>
-  <path d="M32 3 56 16v32L32 61 8 48V16Z" fill="#071d31" stroke="url(#forgeG)" stroke-width="3"/>
-  <path d="M20 19v26M44 19v26M20 32h24" stroke="#cfeeff" stroke-width="5" stroke-linecap="round" filter="url(#forgeGlow)"/>
-  <path d="m32 11 3.5 7h-7Z" fill="#7dd6ff"/>
-</svg>`;
+const logoSvg = BRAND_MARK;
 
-app.innerHTML = `
+const SHELL_HTML = `
 <div class="studio-shell">
   <header class="brand-header">
     <div class="brand-lockup"><span class="brand-logo">${logoSvg}</span><div><h1>HexForge Studio Pro</h1><p>Auto Forensics · Extended Hex Editor & Signature Analyzer</p></div></div>
     <div class="active-file-heading"><strong id="activeFileHeading">No file loaded</strong><span id="activeFileSubheading">Open, drop, or create a binary file to begin</span></div>
     <div class="header-tools">
       <span id="riskBadgeSlot"></span>
-      <span class="local-pill">Local browser processing</span>
+      <a class="header-home" href="#/" title="Back to the overview">Overview</a>
       <button class="theme-toggle" data-action="toggle-theme" title="Switch between the dark and light console themes" aria-label="Switch theme">◐</button>
     </div>
   </header>
@@ -218,13 +208,13 @@ const $ = <T extends Element>(selector: string): T => {
   return value;
 };
 
-const viewContent = $("#viewContent") as HTMLDivElement;
-const workspaceTabs = $("#workspaceTabs") as HTMLDivElement;
-const fileInput = $("#fileInput") as HTMLInputElement;
-const compareInput = $("#compareInput") as HTMLInputElement;
-const pageSizeSelect = $("#pageSizeSelect") as HTMLSelectElement;
-const modalBackdrop = $("#modalBackdrop") as HTMLDivElement;
-const modal = $("#modal") as HTMLDivElement;
+let viewContent!: HTMLDivElement;
+let workspaceTabs!: HTMLDivElement;
+let fileInput!: HTMLInputElement;
+let compareInput!: HTMLInputElement;
+let pageSizeSelect!: HTMLSelectElement;
+let modalBackdrop!: HTMLDivElement;
+let modal!: HTMLDivElement;
 
 function activeTab(): EditorTab | undefined {
   return tabs.find((tab) => tab.id === activeId);
@@ -1527,6 +1517,13 @@ function handleCommand(command: string): void {
   else if (tab) updateAll();
 }
 
+let listenersRegistered = false;
+
+/** Bound once per page load; re-entering the app route reuses the same handlers. */
+function registerListeners(): void {
+  if (listenersRegistered) return;
+  listenersRegistered = true;
+
 app.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   const closeId = target.closest<HTMLElement>("[data-close-tab]")?.dataset.closeTab;
@@ -1698,6 +1695,32 @@ window.addEventListener("dragleave", (event) => { event.preventDefault(); dragDe
 window.addEventListener("drop", (event) => { event.preventDefault(); dragDepth = 0; $("#dropOverlay").classList.remove("visible"); openFiles(Array.from(event.dataTransfer?.files ?? [])); });
 window.addEventListener("beforeunload", () => { worker.terminate(); for (const tab of tabs) tab.preview?.revoke(); });
 
-// Keep the PDF module included in the optimized build and verify preview creation during development.
+}
+
+// Keep the PDF module included in the optimized build.
 void buildPdfReport;
-updateAll();
+
+/** Builds the workstation shell into `root` and wires it up. Called once by the router. */
+export function mountWorkstation(root: HTMLDivElement): void {
+  app = root;
+  app.innerHTML = SHELL_HTML;
+
+  viewContent = $("#viewContent") as HTMLDivElement;
+  workspaceTabs = $("#workspaceTabs") as HTMLDivElement;
+  fileInput = $("#fileInput") as HTMLInputElement;
+  compareInput = $("#compareInput") as HTMLInputElement;
+  pageSizeSelect = $("#pageSizeSelect") as HTMLSelectElement;
+  modalBackdrop = $("#modalBackdrop") as HTMLDivElement;
+  modal = $("#modal") as HTMLDivElement;
+
+  registerListeners();
+  updateAll();
+}
+
+/**
+ * Rebuilds the shell when the user navigates back to the app route.
+ * Open tabs live in module state, so re-rendering restores the previous session.
+ */
+export function remountWorkstation(root: HTMLDivElement): void {
+  mountWorkstation(root);
+}
