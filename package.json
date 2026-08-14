@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "typescript": "^5.8.3",
-    "vite": "^7.0.0",
+    "vite": "^8.2.0",
     "vitest": "^3.2.4"
   },
   "description": "Local-first binary forensics workstation: hex editing, threat intelligence, and forensic reporting.",
