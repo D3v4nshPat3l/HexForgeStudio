@@ -1,0 +1,9 @@
+{
+  "name": "HexForge Studio Pro",
+  "short_name": "HexForge",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#070b11",
+  "theme_color": "#0d1420",
+  "icons": [{"src":"favicon.svg","sizes":"any","type":"image/svg+xml"}]
+}

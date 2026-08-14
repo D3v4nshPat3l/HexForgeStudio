@@ -1,0 +1,39 @@
+{
+  "name": "hexforge-studio",
+  "version": "4.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "hash-wasm": "^4.12.0",
+    "jspdf": "^4.2.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.4"
+  },
+  "description": "Local-first binary forensics workstation: hex editing, threat intelligence, and forensic reporting.",
+  "keywords": [
+    "hex-editor",
+    "digital-forensics",
+    "binary-analysis",
+    "file-signatures",
+    "pe-analyzer",
+    "typescript",
+    "vite",
+    "browser"
+  ],
+  "author": "Devansh Patel",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.19.0",
+    "npm": ">=10.0.0"
+  }
+}

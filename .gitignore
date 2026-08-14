@@ -1,0 +1,21 @@
+# Local environments and dependency trees
+.venv/
+node_modules/
+
+# Test/build scratch output (the prebuilt dist/ directory is intentionally tracked)
+coverage/
+*.tsbuildinfo
+*.log
+
+# Local configuration and release archives
+.env
+.env.*
+!.env.example
+*.zip
+
+# Editor and operating-system noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini

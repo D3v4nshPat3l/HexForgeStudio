@@ -1,0 +1,2 @@
+# Server dependencies for the local launcher.
+# The analysis engine itself runs in the browser and needs nothing from Python.
