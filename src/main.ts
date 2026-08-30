@@ -700,8 +700,37 @@ async function renderInspector(): Promise<void> {
   <dl><div><dt>Unsigned 8</dt><dd>${byte}</dd></div><div><dt>Signed 8</dt><dd>${view.getInt8(0)}</dd></div><div><dt>UInt16 LE</dt><dd>${view.getUint16(0, true)}</dd></div><div><dt>UInt16 BE</dt><dd>${view.getUint16(0, false)}</dd></div><div><dt>UInt32 LE</dt><dd>${view.getUint32(0, true)}</dd></div><div><dt>UInt32 BE</dt><dd>${view.getUint32(0, false)}</dd></div><div><dt>Float32 LE</dt><dd>${Number.isFinite(view.getFloat32(0, true)) ? view.getFloat32(0, true).toPrecision(7) : "—"}</dd></div><div><dt>ASCII</dt><dd>${byte >= 32 && byte <= 126 ? escapeHtml(String.fromCharCode(byte)) : "·"}</dd></div></dl>`;
 }
 
+/**
+ * True when the PE / Preview tab has anything to say about the open file.
+ *
+ * It parses PE/COFF images and previews browser-decodable pictures. For anything else
+ * -- a PDF, an archive, a text file -- both panels can only report that they do not
+ * apply, so the tab is hidden rather than left as two empty boxes.
+ */
+function previewTabApplies(): boolean {
+  const tab = activeTab();
+  if (!tab) return false;
+  if (tab.analysis?.pe?.valid) return true;
+  if (tab.preview) return true;
+  const detected = tab.analysis?.detectedType ?? [];
+  return detected.some((match) =>
+    ["pe", "uefi-pe"].includes(match.id) ||
+    ["png", "jpeg", "gif87", "gif89", "bmp", "ico", "svg", "isobmff"].includes(match.id));
+}
+
 function renderViewTabs(): void {
   document.querySelectorAll<HTMLButtonElement>(".view-tabs [data-view]").forEach((button) => button.classList.toggle("active", button.dataset.view === activeView));
+
+  // Hide the preview tab when it cannot report anything, and step off it if the user
+  // is standing there when a new file makes it inapplicable.
+  const previewTab = document.querySelector<HTMLElement>('.view-tabs [data-view="preview"]');
+  const applies = previewTabApplies();
+  previewTab?.classList.toggle("tab-hidden", !applies);
+  if (!applies && activeView === "preview") {
+    activeView = "hex";
+    previewTab?.classList.remove("active");
+    document.querySelector('.view-tabs [data-view="hex"]')?.classList.add("active");
+  }
   const count = document.querySelector<HTMLElement>("#intelTabCount");
   const analysis = activeTab()?.analysis;
   if (count) {
