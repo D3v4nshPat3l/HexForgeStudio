@@ -1,5 +1,6 @@
 import { BRAND_MARK } from "./brand";
 import { renderByteForge } from "./ui/byte-forge";
+import { hoverButtonLayers } from "./ui/forge-button";
 import { FileByteSource } from "./byte-source";
 import { HexWorkerClient } from "./worker-client";
 import { buildPdfReport, savePdfReport } from "./report/pdf-report";
@@ -119,7 +120,7 @@ const SHELL_HTML = `
 
   <nav class="command-bar" aria-label="Application commands">
     <button data-command="new"><b>＋</b> New</button>
-    <button class="primary" data-command="open"><b>↥</b> Open</button>
+    <button class="primary" data-command="open">${hoverButtonLayers("Open", '')}</button>
     <button data-command="import"><b>⇥</b> Import Data</button>
     <span class="command-divider"></span>
     <button data-command="save" disabled><b>▣</b> Save</button>
@@ -136,10 +137,6 @@ const SHELL_HTML = `
     <button data-command="insert" disabled><b>⊕</b> Insert</button>
     <button data-command="delete" disabled><b>⌫</b> Delete</button>
     <span class="command-spacer"></span>
-    <button data-command="intel" disabled><b>◈</b> Threat Intel</button>
-    <button data-command="forensics" disabled><b>⬡</b> Forensics</button>
-    <button data-command="compare" disabled><b>⇄</b> Compare</button>
-    <button data-command="report" disabled><b>▧</b> Report</button>
   </nav>
 
   <div class="workspace-tabs" id="workspaceTabs"><span>Open multiple files to create workspace tabs.</span></div>
@@ -176,13 +173,13 @@ const SHELL_HTML = `
 
     <section class="center-workspace">
       <nav class="view-tabs" id="viewTabs">
-        <button data-view="hex" class="active">Hex Editor</button>
-        <button data-view="signature">Signature Analysis</button>
-        <button data-view="intel">Threat Intelligence<span class="tab-count" id="intelTabCount">0</span></button>
-        <button data-view="forensics">Forensics Lab</button>
-        <button data-view="comparison">File Comparison</button>
-        <button data-view="preview">PE / Preview</button>
-        <button data-view="report">PDF Report</button>
+        <button class="view-tab active" data-view="hex">${hoverButtonLayers("Hex Editor")}</button>
+        <button class="view-tab" data-view="signature">${hoverButtonLayers("Signature Analysis")}</button>
+        <button class="view-tab" data-view="intel">${hoverButtonLayers("Threat Intelligence", '<span class="tab-count" id="intelTabCount">0</span>')}</button>
+        <button class="view-tab" data-view="forensics">${hoverButtonLayers("Forensics Lab")}</button>
+        <button class="view-tab" data-view="comparison">${hoverButtonLayers("File Comparison")}</button>
+        <button class="view-tab" data-view="preview">${hoverButtonLayers("PE / Preview")}</button>
+        <button class="view-tab" data-view="report">${hoverButtonLayers("PDF Report")}</button>
       </nav>
       <div class="view-content" id="viewContent"></div>
     </section>

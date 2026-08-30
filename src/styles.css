@@ -75,6 +75,7 @@
   --accent-deep: #238636;
   --accent-wash: rgba(63, 185, 80, 0.11);
   --accent-line: rgba(63, 185, 80, 0.30);
+  --on-accent: #0a0a0b;
 
   --amber: #d29922;
   --amber-wash: rgba(210, 153, 34, 0.12);
@@ -159,6 +160,7 @@
   --success: #15672c;
   --success-wash: rgba(26, 127, 55, 0.10);
   --sev-low: #15672c;
+  --on-accent: #ffffff;
 }
 
 /* ------------------------------------------------------------------- resets */
@@ -404,7 +406,7 @@ body.app-mode, html:has(body.app-mode), body.app-mode #app { height: 100%; overf
   background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
   color: #fff;
   border-bottom: 0;
-  box-shadow: 0 calc(var(--u) * 0.6) calc(var(--u) * 2.4) rgba(26, 111, 168, 0.42);
+  box-shadow: 0 calc(var(--u) * 0.6) calc(var(--u) * 2.4) rgba(63, 185, 80, 0.28);
 }
 .command-bar button.primary b { color: #fff; }
 .command-bar button.primary:hover { filter: brightness(1.12); }
@@ -1503,38 +1505,35 @@ body.panel-open { overflow: hidden; }
 /* ============================================================================
    Interactive hover button
    ----------------------------------------------------------------------------
-   Native port of the shadcn/React InteractiveHoverButton. Resting label slides out,
-   a second label slides in with a trailing arrow, and a dot expands to flood the
-   surface. No React or Tailwind in this project, so it is markup plus CSS.
+   Native port of the shadcn/React InteractiveHoverButton: the resting label slides
+   right and fades, a second label slides in with a trailing arrow, and a dot
+   anchored at 20%/40% expands to flood the surface.
+
+   Applied to the view tabs and the primary command action. Deliberately not used
+   in the byte editor -- controls that sit beside live data should not animate
+   under the cursor while you are reading it.
    ========================================================================== */
 
-.forge-btn {
+.hb, .view-tab, .command-bar button.primary {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  min-width: calc(var(--u) * 22);
-  padding: calc(var(--u) * 2) calc(var(--u) * 3.5);
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--panel-2);
-  color: var(--text);
-  font-size: var(--fs-nano);
-  font-weight: 600;
-  line-height: 1.2;
-  cursor: pointer;
-  transition: border-color 0.25s var(--ease), color 0.25s var(--ease);
 }
-.forge-btn:disabled { opacity: 0.4; cursor: default; }
 
-.forge-btn-rest {
-  display: inline-block;
+.hb-rest {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.4);
   transform: translateX(2px);
   transition: transform 0.3s var(--ease), opacity 0.3s var(--ease);
 }
-.forge-btn-hover {
+
+.hb-hover {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1542,35 +1541,56 @@ body.panel-open { overflow: hidden; }
   transform: translateX(calc(var(--u) * 6));
   opacity: 0;
   transition: transform 0.3s var(--ease), opacity 0.3s var(--ease);
+  pointer-events: none;
 }
-.forge-btn-arrow { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.hb-arrow { width: 1.05em; height: 1.05em; flex: 0 0 auto; }
 
-/* The flood: a dot that scales up to cover the button. */
-.forge-btn-dot {
+/* The flood. Starts as a dot, scales past the bounds so corners fill cleanly. */
+.hb-dot {
   position: absolute;
   left: 20%;
   top: 40%;
   z-index: 1;
-  width: calc(var(--u) * 1.4);
-  height: calc(var(--u) * 1.4);
-  border-radius: 999px;
-  background: var(--accent-2);
-  transform: scale(1);
+  width: calc(var(--u) * 1.5);
+  height: calc(var(--u) * 1.5);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
   transition: all 0.3s var(--ease);
+  pointer-events: none;
 }
-.forge-btn:hover:not(:disabled) .forge-btn-rest { transform: translateX(calc(var(--u) * 6)); opacity: 0; }
-.forge-btn:hover:not(:disabled) .forge-btn-hover { transform: translateX(-2px); opacity: 1; color: #fff; }
-.forge-btn:hover:not(:disabled) .forge-btn-dot { left: 0; top: 0; width: 100%; height: 100%; border-radius: 999px; transform: scale(1.05); }
-.forge-btn:hover:not(:disabled) { border-color: var(--accent-2); }
-.forge-btn:active:not(:disabled) { transform: translateY(1px); }
 
-.forge-btn.is-primary .forge-btn-dot { background: var(--accent-2); }
-.forge-btn.is-danger .forge-btn-dot { background: var(--danger); }
-.forge-btn.is-ghost { background: transparent; }
-.forge-btn.is-compact { min-width: calc(var(--u) * 17); padding: calc(var(--u) * 1.5) calc(var(--u) * 3); }
+.hb:hover:not(:disabled) .hb-rest,
+.view-tab:hover .hb-rest,
+.command-bar button.primary:hover:not(:disabled) .hb-rest {
+  transform: translateX(calc(var(--u) * 6));
+  opacity: 0;
+}
+.hb:hover:not(:disabled) .hb-hover,
+.view-tab:hover .hb-hover,
+.command-bar button.primary:hover:not(:disabled) .hb-hover {
+  transform: translateX(-2px);
+  opacity: 1;
+  color: var(--on-accent);
+}
+.hb:hover:not(:disabled) .hb-dot,
+.view-tab:hover .hb-dot,
+.command-bar button.primary:hover:not(:disabled) .hb-dot {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  transform: scale(1.8);
+}
+
+/* The primary action already sits on the accent, so its flood is the darker shade. */
+.command-bar button.primary .hb-dot { background: var(--accent-deep); }
+.command-bar button.primary:hover:not(:disabled) .hb-hover { color: #fff; }
+
+.hb:disabled .hb-dot, .hb:disabled .hb-hover { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .forge-btn-rest, .forge-btn-hover, .forge-btn-dot { transition: none; }
+  .hb-rest, .hb-hover, .hb-dot { transition: none; }
 }
 
 /* ============================================================================
