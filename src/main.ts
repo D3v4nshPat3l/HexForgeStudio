@@ -109,8 +109,22 @@ const logoSvg = BRAND_MARK;
 const SHELL_HTML = `
 <div class="studio-shell">
   <header class="brand-header">
-    <div class="brand-lockup"><span class="brand-logo">${logoSvg}</span><div><h1>HexForge Studio</h1></div></div>
-    <div class="active-file-heading"><strong id="activeFileHeading">No file loaded</strong><span id="activeFileSubheading">Open, drop, or create a binary file to begin</span></div>
+    <div class="brand-lockup">
+      <span class="brand-logo">${logoSvg}</span>
+      <div>
+        <h1>HexForge Studio</h1>
+        <div class="active-file-heading"><strong id="activeFileHeading">No file loaded</strong><span id="activeFileSubheading">Open, drop, or create a binary file to begin</span></div>
+      </div>
+    </div>
+    <nav class="view-tabs" id="viewTabs">
+      <button class="view-tab active" data-view="hex">${hoverButtonLayers("Hex Editor")}</button>
+      <button class="view-tab" data-view="signature">${hoverButtonLayers("Signature Analysis")}</button>
+      <button class="view-tab" data-view="intel">${hoverButtonLayers("Threat Intelligence", '<span class="tab-count" id="intelTabCount">0</span>')}</button>
+      <button class="view-tab" data-view="forensics">${hoverButtonLayers("Forensics Lab")}</button>
+      <button class="view-tab" data-view="comparison">${hoverButtonLayers("File Comparison")}</button>
+      <button class="view-tab" data-view="preview">${hoverButtonLayers("PE / Preview")}</button>
+      <button class="view-tab" data-view="report">${hoverButtonLayers("PDF Report")}</button>
+    </nav>
     <div class="header-tools">
       <span id="riskBadgeSlot"></span>
       <a class="header-home" href="#/" title="Back to the overview">Overview</a>
@@ -172,15 +186,6 @@ const SHELL_HTML = `
     </aside>
 
     <section class="center-workspace">
-      <nav class="view-tabs" id="viewTabs">
-        <button class="view-tab active" data-view="hex">${hoverButtonLayers("Hex Editor")}</button>
-        <button class="view-tab" data-view="signature">${hoverButtonLayers("Signature Analysis")}</button>
-        <button class="view-tab" data-view="intel">${hoverButtonLayers("Threat Intelligence", '<span class="tab-count" id="intelTabCount">0</span>')}</button>
-        <button class="view-tab" data-view="forensics">${hoverButtonLayers("Forensics Lab")}</button>
-        <button class="view-tab" data-view="comparison">${hoverButtonLayers("File Comparison")}</button>
-        <button class="view-tab" data-view="preview">${hoverButtonLayers("PE / Preview")}</button>
-        <button class="view-tab" data-view="report">${hoverButtonLayers("PDF Report")}</button>
-      </nav>
       <div class="view-content" id="viewContent"></div>
     </section>
 

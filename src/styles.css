@@ -29,9 +29,9 @@
   --fs-display: clamp(36px, 2.5vw, 64px);
 
   --row-h: clamp(26px, 1.58vw, 38px);
-  --rail-left: clamp(228px, 14vw, 330px);
-  --rail-right: clamp(236px, 14.5vw, 344px);
-  --header-h: clamp(50px, 3vw, 72px);
+  --rail-left: clamp(196px, 11.8vw, 276px);
+  --rail-right: clamp(212px, 12.6vw, 292px);
+  --header-h: clamp(58px, 3.5vw, 84px);
   --command-h: clamp(44px, 2.7vw, 62px);
   --tabbar-h: clamp(34px, 2.1vw, 48px);
   --status-h: clamp(22px, 1.35vw, 30px);
@@ -217,9 +217,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .brand-header {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(300px, 1fr) minmax(220px, 1.15fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: calc(var(--u) * 6);
+  gap: calc(var(--u) * 4);
   padding: 0 calc(var(--u) * 5);
   background: var(--panel);
   border-bottom: 1px solid var(--line);
@@ -619,7 +619,7 @@ button.subtle:hover:not(:disabled) { background: var(--accent-wash); color: var(
 /* ============================================================ center + views */
 .center-workspace {
   display: grid;
-  grid-template-rows: calc(var(--u) * 7) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   background: var(--bg-deep);
 }
 
@@ -1684,3 +1684,52 @@ body.panel-open { overflow: hidden; }
 /* The hint after the toggle is advisory; drop it first when space is tight. */
 .hex-options > span:last-child { margin-left: calc(var(--u) * 2); }
 @media (max-width: 1500px) { .hex-options > span:last-child { display: none; } }
+
+
+/* ============================================================================
+   View tabs in the masthead
+   ----------------------------------------------------------------------------
+   Moved out of the centre workspace so the byte grid gets that row back. They sit
+   in the header's middle column, which previously held a file summary that the
+   workspace tab and the file navigator already show.
+   ========================================================================== */
+
+.brand-header .view-tabs {
+  height: 100%;
+  align-self: stretch;
+  align-items: stretch;
+  background: transparent;
+  border-bottom: 0;
+  min-width: 0;
+}
+.brand-header .view-tab {
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+}
+.brand-header .view-tab.active {
+  background: transparent;
+  border-bottom-color: var(--accent);
+}
+
+/* The file line sits under the product name rather than in its own column. */
+.brand-lockup .active-file-heading { margin-top: 1px; display: flex; align-items: baseline; gap: calc(var(--u) * 1.4); min-width: 0; }
+.brand-lockup .active-file-heading strong {
+  font-size: var(--fs-nano);
+  font-weight: 600;
+  color: var(--muted);
+  max-width: clamp(120px, 12vw, 260px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.brand-lockup .active-file-heading span {
+  font-size: var(--fs-nano);
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1280px) {
+  .brand-lockup .active-file-heading span { display: none; }
+}
