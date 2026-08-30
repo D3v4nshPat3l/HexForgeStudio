@@ -35,6 +35,12 @@ interface EditorTab {
   id: string;
   file: File;
   source: FileByteSource;
+  /**
+   * Raw bytes around the last rendered window, before patches. Scrolling reuses this
+   * so most frames render without awaiting a read, which is what removes the flicker.
+   * Patches are layered on at render time because they change independently.
+   */
+  readCache?: { start: number; bytes: Uint8Array } | undefined;
   patches: Map<number, number>;
   cursor: number;
   nibble: 0 | 1;
@@ -73,6 +79,9 @@ let activeView: MainView = "hex";
 let bytesPerRow = 16;
 let characterMode: "windows-1252" | "ascii" | "latin1" = "windows-1252";
 let renderGeneration = 0;
+
+/** Pending scroll render, so at most one runs per frame. */
+let scrollFrame = 0;
 let inspectorGeneration = 0;
 let editQueue: Promise<void> = Promise.resolve();
 let dragDepth = 0;
@@ -97,7 +106,15 @@ function hexRowHeight(): number {
 }
 window.addEventListener("resize", () => { hexRowHeightCache = 0; });
 const MAX_HEX_SCROLL_HEIGHT = 30_000_000;
-const HEX_OVERSCAN_ROWS = 12;
+const HEX_OVERSCAN_ROWS = 64;
+
+/**
+ * Extra rows fetched on each side of the window. Generous on purpose: at 16 bytes per
+ * row this is only ~13 KB per side, and it keeps roughly 24,000px of scrolling in
+ * either direction served synchronously from memory. Every cache miss costs an await,
+ * and an await during a scroll is what shows as blank rows.
+ */
+const HEX_CACHE_MARGIN_ROWS = 800;
 
 // Assigned by mountWorkstation(). The workstation is loaded lazily from the router,
 // so none of this may touch the DOM at import time.
@@ -116,15 +133,6 @@ const SHELL_HTML = `
         <div class="active-file-heading"><strong id="activeFileHeading">No file loaded</strong><span id="activeFileSubheading">Open, drop, or create a binary file to begin</span></div>
       </div>
     </div>
-    <nav class="view-tabs" id="viewTabs">
-      <button class="view-tab active" data-view="hex">${hoverButtonLayers("Hex Editor")}</button>
-      <button class="view-tab" data-view="signature">${hoverButtonLayers("Signature Analysis")}</button>
-      <button class="view-tab" data-view="intel">${hoverButtonLayers("Threat Intelligence", '<span class="tab-count" id="intelTabCount">0</span>')}</button>
-      <button class="view-tab" data-view="forensics">${hoverButtonLayers("Forensics Lab")}</button>
-      <button class="view-tab" data-view="comparison">${hoverButtonLayers("File Comparison")}</button>
-      <button class="view-tab" data-view="preview">${hoverButtonLayers("PE / Preview")}</button>
-      <button class="view-tab" data-view="report">${hoverButtonLayers("PDF Report")}</button>
-    </nav>
     <div class="header-tools">
       <span id="riskBadgeSlot"></span>
       <a class="header-home" href="#/" title="Back to the overview">Overview</a>
@@ -151,6 +159,15 @@ const SHELL_HTML = `
     <button data-command="insert" disabled>${hoverButtonLayers("Insert", '', '⊕')}</button>
     <button data-command="delete" disabled>${hoverButtonLayers("Delete", '', '⌫')}</button>
     <span class="command-spacer"></span>
+    <div class="view-tabs" id="viewTabs" role="tablist" aria-label="Workspace views">
+      <button class="view-tab active" data-view="hex">${hoverButtonLayers("Hex Editor")}</button>
+      <button class="view-tab" data-view="signature">${hoverButtonLayers("Signature Analysis")}</button>
+      <button class="view-tab" data-view="intel">${hoverButtonLayers("Threat Intelligence", '<span class="tab-count" id="intelTabCount">0</span>')}</button>
+      <button class="view-tab" data-view="forensics">${hoverButtonLayers("Forensics Lab")}</button>
+      <button class="view-tab" data-view="comparison">${hoverButtonLayers("File Comparison")}</button>
+      <button class="view-tab" data-view="preview">${hoverButtonLayers("PE / Preview")}</button>
+      <button class="view-tab" data-view="report">${hoverButtonLayers("PDF Report")}</button>
+    </div>
   </nav>
 
   <div class="workspace-tabs" id="workspaceTabs"><span>Open multiple files to create workspace tabs.</span></div>
@@ -354,6 +371,7 @@ function replaceTabFile(tab: EditorTab, after: File, label: string, record = tru
   tab.preview = undefined;
   tab.file = after;
   tab.source = new FileByteSource(after);
+  invalidateReadCache(tab);
   tab.patches.clear();
   tab.cursor = Math.min(tab.cursor, Math.max(0, after.size - 1));
   tab.selectionStart = after.size ? tab.cursor : null;
@@ -588,6 +606,10 @@ function updateCommands(): void {
 }
 
 function renderWorkspaceTabs(): void {
+  // The strip only earns its row once there is more than one file to switch between.
+  // With a single file it repeated what the masthead already shows, for 40px.
+  document.querySelector(".studio-shell")?.classList.toggle("has-file-tabs", tabs.length > 1);
+
   if (tabs.length === 0) {
     workspaceTabs.innerHTML = "<span>Open multiple files to create workspace tabs.</span>";
     return;
@@ -967,7 +989,12 @@ function renderHexView(): void {
     }
     const totalRows = Math.max(1, Math.ceil(tab.file.size / bytesPerRow));
     updateContinuousPageIndicator(tab, hexScrollTopToRow(grid.scrollTop, totalRows, virtualHexHeight(totalRows), grid.clientHeight));
-    void renderHexRows(tab);
+    if (scrollFrame === 0) {
+      scrollFrame = window.requestAnimationFrame(() => {
+        scrollFrame = 0;
+        void renderHexRows(tab);
+      });
+    }
   }, { passive: true });
   topScroll.addEventListener("scroll", () => {
     if (syncing) return;
@@ -1001,8 +1028,15 @@ async function renderHexRows(tab: EditorTab): Promise<void> {
   const endRow = Math.min(totalRows, startRow + visibleRows);
   const startOffset = startRow * bytesPerRow;
   const requested = Math.min(tab.file.size - startOffset, (endRow - startRow) * bytesPerRow);
-  const bytes = requested > 0 ? await readRange(tab, startOffset, requested) : new Uint8Array();
-  if (generation !== renderGeneration || tab.id !== activeId || !rowsTarget.isConnected) return;
+
+  // Serve from the cached span when it covers the window. This is the whole point of
+  // the cache: an await here means the DOM keeps the previous rows while the user
+  // scrolls past them, which is what showed as blank space and flicker.
+  let bytes = cachedSlice(tab, startOffset, requested);
+  if (!bytes) {
+    bytes = await fillReadCache(tab, startOffset, requested);
+    if (generation !== renderGeneration || tab.id !== activeId || !rowsTarget.isConnected) return;
+  }
   const selection = selectionBounds(tab);
   const rows: string[] = [];
   for (let row = startRow; row < endRow; row += 1) {
@@ -1977,4 +2011,47 @@ async function refreshForgePanel(tab: EditorTab | null): Promise<void> {
   const original = (await tab.source.read(offset, 1))[0] ?? value;
   if (tab.id !== activeId || tab.cursor !== offset) return;
   host.innerHTML = renderByteForge({ offset, value, original, hasPatch: tab.patches.has(offset) });
+}
+
+
+/**
+ * Returns the requested span with patches applied, if the cached read covers it.
+ * Returns null when a fresh read is needed, so callers can choose to await.
+ */
+function cachedSlice(tab: EditorTab, offset: number, length: number): Uint8Array | null {
+  const cache = tab.readCache;
+  if (!cache || length <= 0) return length <= 0 ? new Uint8Array() : null;
+  if (offset < cache.start || offset + length > cache.start + cache.bytes.length) return null;
+  const view = cache.bytes.slice(offset - cache.start, offset - cache.start + length);
+  applyPatchOverlay(tab, view, offset);
+  return view;
+}
+
+/**
+ * Reads a span padded well beyond the visible window and caches the raw bytes, so
+ * subsequent scrolling nearby is served without touching the file again.
+ */
+async function fillReadCache(tab: EditorTab, offset: number, length: number): Promise<Uint8Array> {
+  if (length <= 0) return new Uint8Array();
+  const margin = HEX_CACHE_MARGIN_ROWS * bytesPerRow;
+  const start = Math.max(0, offset - margin);
+  const end = Math.min(tab.file.size, offset + length + margin);
+  const raw = await tab.source.read(start, end - start);
+  tab.readCache = { start, bytes: raw };
+  const view = raw.slice(offset - start, offset - start + length);
+  applyPatchOverlay(tab, view, offset);
+  return view;
+}
+
+/** Layers edited bytes over a raw span. The cache deliberately stores unpatched data. */
+function applyPatchOverlay(tab: EditorTab, view: Uint8Array, offset: number): void {
+  if (tab.patches.size === 0) return;
+  for (const [patchOffset, value] of tab.patches) {
+    if (patchOffset >= offset && patchOffset < offset + view.length) view[patchOffset - offset] = value;
+  }
+}
+
+/** Drops the cache when the underlying bytes change. */
+function invalidateReadCache(tab: EditorTab): void {
+  tab.readCache = undefined;
 }
