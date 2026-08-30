@@ -3,6 +3,7 @@ import { renderByteForge } from "./ui/byte-forge";
 import { hoverButtonLayers } from "./ui/forge-button";
 import { DEFAULT_INJECTOR_STATE, payloadKey, renderInjectorView, type InjectorState } from "./ui/injector";
 import { loadPayloadLibrary, libraryStatus } from "./analyzers/payload-library";
+import { loadShellLibrary, shellLibraryStatus } from "./analyzers/shell-library";
 import { encodePayload, type EncodingId } from "./analyzers/payloads";
 import { FileByteSource } from "./byte-source";
 import { HexWorkerClient } from "./worker-client";
@@ -1745,6 +1746,13 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  const shellGroupPick = target.closest<HTMLElement>("[data-shell-group]")?.dataset.shellGroup;
+  if (shellGroupPick !== undefined) {
+    injector.shellGroup = Number(shellGroupPick) || 0;
+    injector.shellQuery = "";
+    renderInjectorPanel();
+    return;
+  }
   const toolPick = target.closest<HTMLElement>("[data-injector-tool]")?.dataset.injectorTool;
   if (toolPick) {
     injector.tool = toolPick as InjectorState["tool"];
@@ -1859,6 +1867,13 @@ app.addEventListener("input", (event) => {
     }
     return;
   }
+  if (typed.id === "injShellQuery") {
+    injector.shellQuery = (typed as HTMLInputElement).value;
+    renderInjectorPanel();
+    const box = document.querySelector<HTMLInputElement>("#injShellQuery");
+    if (box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
+    return;
+  }
   if (typed.id === "injQuery") {
     injector.query = (typed as HTMLInputElement).value;
     renderInjectorPanel();
@@ -1910,7 +1925,7 @@ app.addEventListener("change", (event) => {
     return;
   }
   if (target.id === "injShellBinary") { injector.shellBinary = target.value; renderInjectorPanel(); return; }
-  if (target.id === "injShellPlatform") { injector.shellPlatform = target.value as InjectorState["shellPlatform"]; renderInjectorPanel(); return; }
+  if (target.id === "injShellPlatform") { injector.shellPlatform = target.value; renderInjectorPanel(); return; }
   if (target.id === "injEncoding") { injector.encoding = target.value as EncodingId; renderInjectorPanel(); return; }
   if (target.id === "injMode") { injector.mode = target.value as InjectorState["mode"]; renderInjectorPanel(); return; }
   if (target.id === "injOffset") { injector.offsetText = target.value; return; }
@@ -2226,8 +2241,16 @@ function buildInjectionBytes(): Uint8Array {
 function renderInjectorPanel(): void {
   // viewContent is replaced wholesale below, which resets the scroll container. Capture
   // the offset first so selecting a payload does not throw the reader back to the top.
+  // Every scroll container in this view is replaced by the re-render below. The outer
+  // panel was already preserved, but the three browser columns have their own
+  // scrollers -- and the payload list is the one the reader is actually inside when
+  // they click, which is why selecting an entry still jumped to the top.
   const keptScroll = viewContent.querySelector<HTMLElement>(".content-scroll")?.scrollTop ?? 0;
-  if (libraryStatus() === "idle") {
+  const keptColumns = [...viewContent.querySelectorAll<HTMLElement>(".payload-scroll")].map((column) => column.scrollTop);
+  if (injector.tool === "shell" && shellLibraryStatus() === "idle") {
+    void loadShellLibrary().then(() => { if (activeView === "injector") renderInjectorPanel(); });
+  }
+  if (injector.tool === "library" && libraryStatus() === "idle") {
     // Roughly 4.6 MB, so it is fetched on first use rather than at startup.
     void loadPayloadLibrary().then(() => { if (activeView === "injector") renderInjectorPanel(); });
   }
@@ -2244,6 +2267,10 @@ function renderInjectorPanel(): void {
 
   const restored = viewContent.querySelector<HTMLElement>(".content-scroll");
   if (restored && keptScroll > 0) restored.scrollTop = keptScroll;
+  viewContent.querySelectorAll<HTMLElement>(".payload-scroll").forEach((column, index) => {
+    const previous = keptColumns[index];
+    if (previous !== undefined && previous > 0) column.scrollTop = previous;
+  });
 }
 
 /** Applies the current injection to the open buffer. */

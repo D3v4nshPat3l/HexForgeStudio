@@ -2137,3 +2137,40 @@ textarea.injector-source {
  * the status bar and reads as clipped.
  */
 .hex-virtual-spacer { padding-bottom: var(--row-h); }
+
+/* Command-type tabs inside the connect-back builder. */
+.tool-switch.shell-types { flex-wrap: wrap; margin-bottom: calc(var(--u) * 2); }
+.tool-switch.shell-types button { display: inline-flex; align-items: center; gap: calc(var(--u) * 1.4); }
+.tool-switch.shell-types em {
+  font-style: normal;
+  padding: 0 calc(var(--u) * 1.1);
+  border-radius: 999px;
+  background: var(--panel-3);
+  color: var(--dim);
+  font: var(--fs-nano) var(--mono);
+}
+.tool-switch.shell-types .active em { background: rgba(0, 0, 0, 0.22); color: var(--on-accent); }
+
+.shell-item-head i {
+  font-style: normal;
+  padding: 0 calc(var(--u) * 1.1);
+  border-radius: 999px;
+  background: var(--amber-wash);
+  color: var(--amber);
+  font: var(--fs-nano) var(--mono);
+}
+
+/*
+ * Full command bodies, including the multi-hundred-line scripts. They are capped and
+ * scrolled in place so one long entry cannot push the rest of the list off screen.
+ */
+.shell-item code {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+  max-height: calc(var(--u) * 26);
+  overflow-y: auto;
+}
+.shell-item-long code { max-height: calc(var(--u) * 44); }
+.shell-item-long { border-left: 2px solid var(--accent-line); }

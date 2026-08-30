@@ -2,9 +2,11 @@ import { ENCODINGS, type EncodingId } from "../analyzers/payloads";
 import {
   categoryTotal, filterPayloads, libraryError, libraryStatus, libraryTotals, loadedLibrary
 } from "../analyzers/payload-library";
+import { LISTENERS, SHELL_BINARIES, TTY_UPGRADES, renderTemplate } from "../analyzers/reverse-shells";
 import {
-  LISTENERS, REVERSE_SHELLS, SHELL_BINARIES, TTY_UPGRADES, renderTemplate
-} from "../analyzers/reverse-shells";
+  applyShellSubstitutions, filterShellCommands, loadedShellLibrary, shellLibraryError,
+  shellLibraryStatus, shellPlatforms, shellTotals
+} from "../analyzers/shell-library";
 
 /**
  * Payload injector view.
@@ -19,6 +21,9 @@ import {
  *
  * Payload text is only ever displayed, encoded, and written. It is never evaluated.
  */
+
+/** Line separator, named so it survives templating without escaping games. */
+const NEWLINE = String.fromCharCode(10);
 
 export type InjectMode = "overwrite-cursor" | "insert-cursor" | "overwrite-selection" | "append" | "offset";
 
@@ -43,7 +48,11 @@ export interface InjectorState {
   /** Which builder is showing: the payload library or the connect-back generator. */
   tool: "library" | "shell";
   shellBinary: string;
-  shellPlatform: "All" | "Linux" | "Windows" | "Any";
+  /** Platform tag filter for the command set: "all", "linux", "windows", "mac". */
+  shellPlatform: string;
+  /** Which command type is showing: Reverse, Bind, MSFVenom, HoaxShell, Assembled. */
+  shellGroup: number;
+  shellQuery: string;
 }
 
 export const DEFAULT_INJECTOR_STATE: InjectorState = {
@@ -62,7 +71,9 @@ export const DEFAULT_INJECTOR_STATE: InjectorState = {
   edited: false,
   tool: "library",
   shellBinary: "/bin/sh",
-  shellPlatform: "All"
+  shellPlatform: "all",
+  shellGroup: 0,
+  shellQuery: ""
 };
 
 const MODES: Array<{ id: InjectMode; label: string; note: string }> = [
@@ -184,32 +195,48 @@ export function renderInjectorView(input: InjectorRenderInput): string {
 /**
  * Connect-back command builder.
  *
- * Host, port and shell are substituted into each template live, so the commands read
- * exactly as they would be used. Selecting one loads it into the source box; it is
- * never run here.
+ * Command types across the top, an OS filter and name search, then every matching
+ * command with its full body. Host, port and shell are substituted live. Selecting a
+ * command loads it into the source box; it is never run here.
  */
 function renderShellBuilder(state: InjectorState): string {
-  const options = { host: state.host, port: state.port, shell: state.shellBinary };
-  const platforms: Array<InjectorState["shellPlatform"]> = ["All", "Linux", "Windows", "Any"];
-  const visible = REVERSE_SHELLS.filter((item) =>
-    state.shellPlatform === "All" || item.platform === state.shellPlatform);
+  const status = shellLibraryStatus();
+  if (status === "loading" || status === "idle") {
+    return card("CONNECT-BACK BUILDER", "", `<p class="rail-empty">Loading command set…</p>`);
+  }
+  if (status === "error") {
+    return card("CONNECT-BACK BUILDER", "unavailable",
+      `<p class="rail-empty">The command set could not be loaded: ${escapeHtml(shellLibraryError())}</p>
+       <p class="rail-empty">The source box below still works, so a command can be pasted and injected.</p>`);
+  }
 
-  const row = (id: string, label: string, note: string, command: string) => `
-    <button type="button" class="payload-item shell-item" data-payload-value="${escapeHtml(command)}" data-shell-id="${id}">
-      <span class="shell-item-head"><b>${escapeHtml(label)}</b><em>${escapeHtml(note)}</em></span>
-      <code>${escapeHtml(command)}</code>
-    </button>`;
+  const library = loadedShellLibrary();
+  if (!library || library.groups.length === 0) {
+    return card("CONNECT-BACK BUILDER", "empty", `<p class="rail-empty">The command set is empty.</p>`);
+  }
 
-  return `<section class="content-card">
-    <div class="card-heading">
-      <h3>CONNECT-BACK BUILDER</h3>
-      <span>${REVERSE_SHELLS.length} callbacks · ${LISTENERS.length} listeners</span>
-    </div>
+  const totals = shellTotals();
+  const group = library.groups[Math.min(state.shellGroup, library.groups.length - 1)]!;
+  const values = { host: state.host, port: state.port, shell: state.shellBinary };
+  const matches = filterShellCommands(group, state.shellPlatform, state.shellQuery);
+  const platforms = ["all", ...shellPlatforms()];
+
+  return card("CONNECT-BACK BUILDER", `${totals.groups} types · ${totals.commands} commands`, `
     <p>
-      Host, port and shell are substituted into each template as you type. Selecting a
-      command loads it into the source box below. Nothing here is executed, and this
-      application opens no network connections.
+      Host, port and shell are substituted into every command as you type. Selecting one
+      loads it into the source box below. Nothing here is executed, and this application
+      opens no network connections.
     </p>
+
+    <div class="tool-switch shell-types" role="tablist" aria-label="Command type">
+      ${library.groups.map((item, index) => `
+        <button type="button" class="${index === state.shellGroup ? "active" : ""}"
+          data-shell-group="${index}" role="tab" aria-selected="${index === state.shellGroup}">
+          ${escapeHtml(item.label)}<em>${item.items.length}</em>
+        </button>`).join("")}
+    </div>
+
+    <p class="injector-note">${escapeHtml(group.summary)}</p>
 
     <div class="injector-grid">
       <label>Listener host<input id="injHost" value="${escapeHtml(state.host)}" spellcheck="false"></label>
@@ -220,29 +247,53 @@ function renderShellBuilder(state: InjectorState): string {
             `<option value="${escapeHtml(item)}"${item === state.shellBinary ? " selected" : ""}>${escapeHtml(item)}</option>`).join("")}
         </select>
       </label>
-      <label>Platform
+      <label>OS
         <select id="injShellPlatform">
           ${platforms.map((item) =>
-            `<option value="${item}"${item === state.shellPlatform ? " selected" : ""}>${item}</option>`).join("")}
+            `<option value="${item}"${item === state.shellPlatform ? " selected" : ""}>${item === "all" ? "All" : item}</option>`).join("")}
         </select>
+      </label>
+      <label>Search
+        <input id="injShellQuery" value="${escapeHtml(state.shellQuery)}" spellcheck="false"
+          placeholder="Filter ${group.items.length} commands…">
       </label>
     </div>
 
-    <h4 class="shell-section">Callbacks<span>${visible.length}</span></h4>
     <div class="shell-list">
-      ${visible.map((item) => row(item.id, `${item.label} · ${item.platform}`, item.note, renderTemplate(item.template, options))).join("")}
+      ${matches.length === 0
+        ? `<p class="rail-empty">No command matches that filter.</p>`
+        : matches.map((item) => {
+            const command = applyShellSubstitutions(item.command, values);
+            const multiline = command.includes(NEWLINE);
+            return `<button type="button" class="payload-item shell-item${multiline ? " shell-item-long" : ""}"
+              data-payload-value="${escapeHtml(command)}">
+              <span class="shell-item-head">
+                <b>${escapeHtml(item.name)}</b>
+                <em>${escapeHtml(item.meta.filter((tag) => ["linux","windows","mac"].includes(tag)).join(" · ") || "any")}</em>
+                ${multiline ? `<i>${command.split(NEWLINE).length} lines</i>` : ""}
+              </span>
+              <code>${escapeHtml(command)}</code>
+            </button>`;
+          }).join("")}
     </div>
 
     <h4 class="shell-section">Listeners<span>${LISTENERS.length}</span></h4>
     <div class="shell-list">
-      ${LISTENERS.map((item) => row(item.id, item.label, item.note, renderTemplate(item.template, options))).join("")}
+      ${LISTENERS.map((item) => `
+        <button type="button" class="payload-item shell-item" data-payload-value="${escapeHtml(renderTemplate(item.template, values))}">
+          <span class="shell-item-head"><b>${escapeHtml(item.label)}</b><em>${escapeHtml(item.note)}</em></span>
+          <code>${escapeHtml(renderTemplate(item.template, values))}</code>
+        </button>`).join("")}
     </div>
 
     <h4 class="shell-section">Terminal upgrades<span>${TTY_UPGRADES.length}</span></h4>
     <div class="shell-list">
-      ${TTY_UPGRADES.map((item) => row(item.id, item.label, item.note, renderTemplate(item.template, options))).join("")}
-    </div>
-  </section>`;
+      ${TTY_UPGRADES.map((item) => `
+        <button type="button" class="payload-item shell-item" data-payload-value="${escapeHtml(renderTemplate(item.template, values))}">
+          <span class="shell-item-head"><b>${escapeHtml(item.label)}</b><em>${escapeHtml(item.note)}</em></span>
+          <code>${escapeHtml(renderTemplate(item.template, values))}</code>
+        </button>`).join("")}
+    </div>`);
 }
 
 function renderBrowser(state: InjectorState): string {
