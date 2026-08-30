@@ -1,44 +1,49 @@
-import { ENCODINGS, PAYLOAD_CATEGORIES, payloadCount, type EncodingId, type PayloadCategoryId } from "../analyzers/payloads";
+import { ENCODINGS, type EncodingId } from "../analyzers/payloads";
+import {
+  categoryTotal, filterPayloads, libraryError, libraryStatus, libraryTotals, loadedLibrary
+} from "../analyzers/payload-library";
 
 /**
  * Payload injector view.
  *
- * Writes a selected test payload into the open buffer at a chosen position, optionally
- * encoded. Every write goes through the editor's normal patch and undo machinery, so an
- * injection is reversible like any other edit and nothing touches the file on disk until
- * the user saves.
+ * Browses the bundled library (category, then document, then payload), loads a choice
+ * into an editable source box, encodes it, and writes it into the open buffer at a
+ * chosen position. Writes go through the editor's normal patch and undo machinery.
  *
- * The library is a starting point, not a constraint: the source box is editable, and
- * anything typed there is what gets encoded and written. Selecting a library entry
- * loads it into that box rather than bypassing it, so there is one source of truth for
- * what will be injected.
+ * The library holds tens of thousands of entries, so the payload column is filtered and
+ * capped rather than fully rendered -- one upstream document alone carries over twenty
+ * thousand lines, and putting that in the DOM would stall the tab.
+ *
+ * Payload text is only ever displayed, encoded, and written. It is never evaluated.
  */
 
 export type InjectMode = "overwrite-cursor" | "insert-cursor" | "overwrite-selection" | "append" | "offset";
 
+/** Payload rows rendered at once; the rest stay behind the filter. */
+export const PAYLOAD_RENDER_LIMIT = 300;
+
 export interface InjectorState {
-  category: PayloadCategoryId;
-  payloadIndex: number;
+  categoryIndex: number;
+  groupIndex: number;
+  payloadKey: string;
+  query: string;
   encoding: EncodingId;
   mode: InjectMode;
-  /** Target for the explicit-offset mode, as typed. */
   offsetText: string;
-  /** Substitutions applied before encoding, for placeholder-bearing payloads. */
   host: string;
   port: string;
   repeat: number;
   nullTerminate: boolean;
-  /**
-   * The text that will actually be injected. Seeded from the selected library entry
-   * and then freely editable; `edited` tracks whether it still matches the library.
-   */
+  /** What will actually be injected: seeded from a selection, then freely editable. */
   source: string;
   edited: boolean;
 }
 
 export const DEFAULT_INJECTOR_STATE: InjectorState = {
-  category: "sqli",
-  payloadIndex: 0,
+  categoryIndex: 0,
+  groupIndex: 0,
+  payloadKey: "",
+  query: "",
   encoding: "raw",
   mode: "overwrite-cursor",
   offsetText: "0x00000000",
@@ -46,7 +51,7 @@ export const DEFAULT_INJECTOR_STATE: InjectorState = {
   port: "4444",
   repeat: 1,
   nullTerminate: false,
-  source: PAYLOAD_CATEGORIES[0]?.payloads[0]?.value ?? "",
+  source: "",
   edited: false
 };
 
@@ -58,24 +63,17 @@ const MODES: Array<{ id: InjectMode; label: string; note: string }> = [
   { id: "append", label: "Append to end", note: "Adds to the tail of the file" }
 ];
 
-export function lookupPayload(category: PayloadCategoryId, index: number): string {
-  const group = PAYLOAD_CATEGORIES.find((item) => item.id === category) ?? PAYLOAD_CATEGORIES[0]!;
-  return group.payloads[Math.min(index, group.payloads.length - 1)]?.value ?? "";
-}
-
 export interface InjectorRenderInput {
   state: InjectorState;
   hasFile: boolean;
   cursor: number;
   selectionLength: number;
   fileSize: number;
-  /** Bytes that would be written, for the preview. */
   preview: Uint8Array;
 }
 
 export function renderInjectorView(input: InjectorRenderInput): string {
   const { state, hasFile, cursor, selectionLength, fileSize, preview } = input;
-  const category = PAYLOAD_CATEGORIES.find((item) => item.id === state.category) ?? PAYLOAD_CATEGORIES[0]!;
   const mode = MODES.find((item) => item.id === state.mode) ?? MODES[0]!;
   const usesPlaceholders = /LISTENER_HOST|LISTENER_PORT/.test(state.source);
 
@@ -87,39 +85,7 @@ export function renderInjectorView(input: InjectorRenderInput): string {
     .join("");
 
   return `<div class="content-scroll injector-view">
-    <section class="content-card">
-      <div class="card-heading">
-        <h3>PAYLOAD LIBRARY</h3>
-        <span>${PAYLOAD_CATEGORIES.length} categories · ${payloadCount()} payloads</span>
-      </div>
-      <p>
-        Pick an entry to load it into the source box below, or write your own. Whatever is
-        in that box is what gets encoded and written.
-      </p>
-
-      <div class="payload-browser">
-        <div class="payload-categories" role="tablist" aria-label="Payload categories">
-          ${PAYLOAD_CATEGORIES.map((item) => `
-            <button type="button" class="payload-cat${item.id === state.category ? " active" : ""}"
-              data-payload-category="${item.id}" role="tab" aria-selected="${item.id === state.category}">
-              <b>${escapeHtml(item.label)}</b><span>${item.payloads.length}</span>
-            </button>`).join("")}
-        </div>
-
-        <div class="payload-list" role="listbox" aria-label="${escapeHtml(category.label)} payloads">
-          <p class="payload-summary">${escapeHtml(category.summary)}</p>
-          ${category.payloads.map((item, index) => {
-            const selected = !state.edited && index === state.payloadIndex;
-            return `<button type="button" class="payload-item${selected ? " active" : ""}"
-              data-payload-index="${index}" role="option" aria-selected="${selected}">
-              <b>${escapeHtml(item.name)}</b>
-              <code>${escapeHtml(item.value.length > 96 ? `${item.value.slice(0, 96)}…` : item.value)}</code>
-              <small>${escapeHtml(item.note)}</small>
-            </button>`;
-          }).join("")}
-        </div>
-      </div>
-    </section>
+    ${renderBrowser(state)}
 
     <section class="content-card">
       <div class="card-heading">
@@ -131,9 +97,8 @@ export function renderInjectorView(input: InjectorRenderInput): string {
         are expanded before encoding.
       </p>
       <textarea id="injSource" class="injector-source" spellcheck="false" rows="4"
-        placeholder="Type or paste a payload…">${escapeHtml(state.source)}</textarea>
+        placeholder="Pick a payload above, or type your own…">${escapeHtml(state.source)}</textarea>
       <div class="injector-source-actions">
-        <button data-action="inject-reset"${state.edited ? "" : " disabled"}>Reset to library entry</button>
         <button data-action="inject-clear">Clear</button>
       </div>
     </section>
@@ -197,6 +162,90 @@ export function renderInjectorView(input: InjectorRenderInput): string {
       payloads, does not open network connections, and sends nothing anywhere.
     </section>
   </div>`;
+}
+
+function renderBrowser(state: InjectorState): string {
+  const status = libraryStatus();
+
+  if (status === "loading" || status === "idle") {
+    return card("PAYLOAD LIBRARY", "", `<p class="rail-empty">Loading payload library…</p>`);
+  }
+  if (status === "error") {
+    return card("PAYLOAD LIBRARY", "unavailable",
+      `<p class="rail-empty">The payload library could not be loaded: ${escapeHtml(libraryError())}</p>
+       <p class="rail-empty">The source box below still works, so custom payloads can be injected.</p>`);
+  }
+
+  const library = loadedLibrary();
+  if (!library || library.categories.length === 0) {
+    return card("PAYLOAD LIBRARY", "empty", `<p class="rail-empty">The payload library is empty.</p>`);
+  }
+
+  const totals = libraryTotals();
+  const category = library.categories[Math.min(state.categoryIndex, library.categories.length - 1)]!;
+  const group = category.groups[Math.min(state.groupIndex, category.groups.length - 1)]!;
+  const { shown, total } = filterPayloads(group, state.query, PAYLOAD_RENDER_LIMIT);
+
+  const heading = `${totals.categories} categories · ${totals.groups} sets · ${totals.payloads.toLocaleString()} payloads`;
+
+  return card("PAYLOAD LIBRARY", heading, `
+    <div class="payload-browser">
+      <div class="payload-column">
+        <h4>Category</h4>
+        <div class="payload-scroll">
+          ${library.categories.map((item, index) => `
+            <button type="button" class="payload-cat${index === state.categoryIndex ? " active" : ""}"
+              data-payload-category="${index}">
+              <b>${escapeHtml(item.name)}</b><span>${categoryTotal(item).toLocaleString()}</span>
+            </button>`).join("")}
+        </div>
+      </div>
+
+      <div class="payload-column">
+        <h4>Set</h4>
+        <div class="payload-scroll">
+          ${category.groups.map((item, index) => `
+            <button type="button" class="payload-cat${index === state.groupIndex ? " active" : ""}"
+              data-payload-group="${index}">
+              <b>${escapeHtml(item.name)}</b><span>${item.items.length.toLocaleString()}</span>
+            </button>`).join("")}
+        </div>
+      </div>
+
+      <div class="payload-column payload-column-wide">
+        <h4>Payload
+          <input id="injQuery" class="payload-filter" value="${escapeHtml(state.query)}"
+            placeholder="Filter ${group.items.length.toLocaleString()} payloads…" spellcheck="false">
+        </h4>
+        <div class="payload-scroll payload-list">
+          ${shown.length === 0
+            ? `<p class="rail-empty">No payload matches that filter.</p>`
+            : shown.map((item) => {
+                const key = payloadKey(item.v);
+                return `<button type="button" class="payload-item${key === state.payloadKey ? " active" : ""}"
+                  data-payload-value="${escapeHtml(item.v)}">
+                  <code>${escapeHtml(item.v.length > 220 ? `${item.v.slice(0, 220)}…` : item.v)}</code>
+                  <small>${escapeHtml(item.n)}</small>
+                </button>`;
+              }).join("")}
+          ${total > shown.length
+            ? `<p class="payload-more">${(total - shown.length).toLocaleString()} more match — narrow the filter to see them.</p>`
+            : ""}
+        </div>
+      </div>
+    </div>`);
+}
+
+/** Stable identity for a payload, used only to mark the selected row. */
+export function payloadKey(value: string): string {
+  return value.length > 120 ? `${value.slice(0, 120)}#${value.length}` : value;
+}
+
+function card(title: string, meta: string, body: string): string {
+  return `<section class="content-card">
+    <div class="card-heading"><h3>${escapeHtml(title)}</h3>${meta ? `<span>${escapeHtml(meta)}</span>` : ""}</div>
+    ${body}
+  </section>`;
 }
 
 function formatOffset(value: number): string {

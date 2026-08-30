@@ -1,8 +1,9 @@
 import { BRAND_MARK } from "./brand";
 import { renderByteForge } from "./ui/byte-forge";
 import { hoverButtonLayers } from "./ui/forge-button";
-import { DEFAULT_INJECTOR_STATE, lookupPayload, renderInjectorView, type InjectorState } from "./ui/injector";
-import { PAYLOAD_CATEGORIES, encodePayload, type EncodingId, type PayloadCategoryId } from "./analyzers/payloads";
+import { DEFAULT_INJECTOR_STATE, payloadKey, renderInjectorView, type InjectorState } from "./ui/injector";
+import { loadPayloadLibrary, libraryStatus } from "./analyzers/payload-library";
+import { encodePayload, type EncodingId } from "./analyzers/payloads";
 import { FileByteSource } from "./byte-source";
 import { HexWorkerClient } from "./worker-client";
 import { buildPdfReport, savePdfReport } from "./report/pdf-report";
@@ -1701,18 +1702,24 @@ app.addEventListener("click", (event) => {
   }
 
   const categoryPick = target.closest<HTMLElement>("[data-payload-category]")?.dataset.payloadCategory;
-  if (categoryPick) {
-    injector.category = categoryPick as PayloadCategoryId;
-    injector.payloadIndex = 0;
-    injector.source = lookupPayload(injector.category, 0);
-    injector.edited = false;
+  if (categoryPick !== undefined) {
+    injector.categoryIndex = Number(categoryPick) || 0;
+    injector.groupIndex = 0;
+    injector.query = "";
     renderInjectorPanel();
     return;
   }
-  const payloadPick = target.closest<HTMLElement>("[data-payload-index]")?.dataset.payloadIndex;
-  if (payloadPick !== undefined) {
-    injector.payloadIndex = Number(payloadPick) || 0;
-    injector.source = lookupPayload(injector.category, injector.payloadIndex);
+  const groupPick = target.closest<HTMLElement>("[data-payload-group]")?.dataset.payloadGroup;
+  if (groupPick !== undefined) {
+    injector.groupIndex = Number(groupPick) || 0;
+    injector.query = "";
+    renderInjectorPanel();
+    return;
+  }
+  const valuePick = target.closest<HTMLElement>("[data-payload-value]")?.dataset.payloadValue;
+  if (valuePick !== undefined) {
+    injector.source = valuePick;
+    injector.payloadKey = payloadKey(valuePick);
     injector.edited = false;
     renderInjectorPanel();
     return;
@@ -1757,7 +1764,6 @@ app.addEventListener("click", (event) => {
   else if (action === "copy-text") void copySelection(true);
   else if (action === "save-selection") void exportSelection();
   else if (action === "select-all" && tab?.file.size) { tab.selectionStart = 0; tab.selectionEnd = tab.file.size - 1; tab.cursor = 0; tab.page = 0; updateAll(); }
-  else if (action === "inject-reset") { injector.source = lookupPayload(injector.category, injector.payloadIndex); injector.edited = false; renderInjectorPanel(); }
   else if (action === "inject-clear") { injector.source = ""; injector.edited = true; renderInjectorPanel(); }
   else if (action === "inject-apply") void applyInjection().catch((error) => toast(error instanceof Error ? error.message : String(error), "error"));
   else if (action === "inject-copy") {
@@ -1789,9 +1795,17 @@ app.addEventListener("click", (event) => {
 
 app.addEventListener("input", (event) => {
   const typed = event.target as HTMLElement;
+  if (typed.id === "injQuery") {
+    injector.query = (typed as HTMLInputElement).value;
+    renderInjectorPanel();
+    const box = document.querySelector<HTMLInputElement>("#injQuery");
+    if (box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
+    return;
+  }
   if (typed.id === "injSource") {
     injector.source = (typed as HTMLTextAreaElement).value;
-    injector.edited = injector.source !== lookupPayload(injector.category, injector.payloadIndex);
+    injector.edited = true;
+    injector.payloadKey = "";
     refreshInjectorPreview();
     return;
   }
@@ -1828,7 +1842,7 @@ app.addEventListener("change", (event) => {
   if (target.id === "injEncoding") { injector.encoding = target.value as EncodingId; renderInjectorPanel(); return; }
   if (target.id === "injMode") { injector.mode = target.value as InjectorState["mode"]; renderInjectorPanel(); return; }
   if (target.id === "injOffset") { injector.offsetText = target.value; return; }
-  if (target.id === "injSource") { injector.source = target.value; injector.edited = target.value !== lookupPayload(injector.category, injector.payloadIndex); renderInjectorPanel(); return; }
+  if (target.id === "injSource") { injector.source = target.value; injector.edited = true; injector.payloadKey = ""; renderInjectorPanel(); return; }
   if (target.id === "injRepeat") { injector.repeat = Math.max(1, Math.min(4096, Number(target.value) || 1)); renderInjectorPanel(); return; }
   if (target.id === "injHost") { injector.host = target.value; renderInjectorPanel(); return; }
   if (target.id === "injPort") { injector.port = target.value; renderInjectorPanel(); return; }
@@ -2115,9 +2129,8 @@ function invalidateReadCache(tab: EditorTab): void {
  * inside an encoded blob.
  */
 function buildInjectionBytes(): Uint8Array {
-  // Whatever is in the source box is the payload, whether it came from the library or
-  // was typed. Placeholders are substituted regardless of category, so a custom payload
-  // can use them too.
+  // Whatever is in the source box is the payload, whether it was picked from the
+  // library or typed. Placeholders are substituted either way.
   let text = injector.source;
   if (/LISTENER_HOST|LISTENER_PORT/.test(text)) {
     text = text.replace(/LISTENER_HOST/g, injector.host || "127.0.0.1")
@@ -2134,6 +2147,10 @@ function buildInjectionBytes(): Uint8Array {
 }
 
 function renderInjectorPanel(): void {
+  if (libraryStatus() === "idle") {
+    // Roughly 4.6 MB, so it is fetched on first use rather than at startup.
+    void loadPayloadLibrary().then(() => { if (activeView === "injector") renderInjectorPanel(); });
+  }
   const tab = activeTab();
   const selection = tab ? selectionBounds(tab) : null;
   viewContent.innerHTML = renderInjectorView({

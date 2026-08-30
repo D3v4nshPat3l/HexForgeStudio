@@ -1841,40 +1841,62 @@ body.panel-open { overflow: hidden; }
 /* ============================================================================
    Payload browser
    ----------------------------------------------------------------------------
-   Categories on the left, every payload in the selected category listed on the
-   right. A dropdown showed one entry at a time, which made the library feel like
-   it held a single payload.
+   Three columns: category, set, payload. The payload column is filtered and
+   capped rather than fully rendered -- one upstream set alone holds over twenty
+   thousand entries.
    ========================================================================== */
 
 .payload-browser {
   display: grid;
-  grid-template-columns: minmax(150px, 210px) minmax(0, 1fr);
+  grid-template-columns: minmax(150px, 220px) minmax(150px, 230px) minmax(0, 1fr);
   gap: calc(var(--u) * 2.5);
   margin-top: calc(var(--u) * 3);
 }
+.payload-column { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: calc(var(--u) * 1.5); min-width: 0; }
+.payload-column h4 {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  margin: 0;
+  font-size: var(--fs-nano);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+}
+.payload-filter { flex: 1; min-width: 0; padding: calc(var(--u) * 1) calc(var(--u) * 1.6); font-size: var(--fs-nano); }
 
-.payload-categories {
+.payload-scroll {
   display: grid;
   align-content: start;
   gap: 2px;
-  max-height: 420px;
+  height: 380px;
   overflow-y: auto;
   padding-right: calc(var(--u) * 1);
+  scrollbar-width: thin;
 }
+
 .payload-cat {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: calc(var(--u) * 1.5);
   width: 100%;
-  padding: calc(var(--u) * 1.8) calc(var(--u) * 2);
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 2);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
   text-align: left;
   cursor: pointer;
 }
-.payload-cat b { font-size: var(--fs-nano); font-weight: 500; color: var(--muted); }
+.payload-cat b {
+  min-width: 0;
+  font-size: var(--fs-nano);
+  font-weight: 500;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .payload-cat span {
   flex: 0 0 auto;
   padding: 0 calc(var(--u) * 1.2);
@@ -1889,21 +1911,12 @@ body.panel-open { overflow: hidden; }
 .payload-cat.active b { color: var(--accent-2); font-weight: 600; }
 .payload-cat.active span { background: var(--accent-2); color: var(--on-accent); }
 
-.payload-list {
-  display: grid;
-  align-content: start;
-  gap: calc(var(--u) * 1.2);
-  max-height: 420px;
-  overflow-y: auto;
-  padding-right: calc(var(--u) * 1);
-}
-.payload-summary { margin: 0 0 calc(var(--u) * 1); font-size: var(--fs-nano); color: var(--faint); }
-
+.payload-list { gap: calc(var(--u) * 1.2); }
 .payload-item {
   display: grid;
   gap: calc(var(--u) * 0.8);
   width: 100%;
-  padding: calc(var(--u) * 2);
+  padding: calc(var(--u) * 1.8);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--panel-2);
@@ -1912,14 +1925,19 @@ body.panel-open { overflow: hidden; }
 }
 .payload-item:hover { border-color: var(--accent-line); background: var(--panel-3); }
 .payload-item.active { border-color: var(--accent-2); background: var(--accent-wash); }
-.payload-item b { font-size: var(--fs-nano); font-weight: 600; color: var(--text-strong); }
 .payload-item code {
   font: var(--fs-nano) var(--mono);
   color: var(--accent-2);
   overflow-wrap: anywhere;
   line-height: 1.5;
 }
-.payload-item small { font-size: var(--fs-nano); color: var(--faint); line-height: 1.5; }
+.payload-item small { font-size: var(--fs-nano); color: var(--faint); line-height: 1.4; }
+.payload-more { margin: calc(var(--u) * 1.5) 0 0; font-size: var(--fs-nano); color: var(--faint); text-align: center; }
+
+@media (max-width: 1400px) {
+  .payload-browser { grid-template-columns: minmax(140px, 200px) minmax(0, 1fr); }
+  .payload-column-wide { grid-column: 1 / -1; }
+}
 
 /* The source box is a real editor, not a preview. */
 textarea.injector-source {
