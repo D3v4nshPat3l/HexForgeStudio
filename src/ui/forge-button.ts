@@ -16,12 +16,15 @@ const ARROW_RIGHT = `<svg class="hb-arrow" viewBox="0 0 24 24" fill="none" strok
 
 /**
  * The three layers the effect needs, for callers that own the surrounding button.
- * `trailing` is rendered inside the resting layer only -- a count badge should not be
- * duplicated in the layer that slides in.
+ * `trailing` and `icon` are rendered inside the resting layer only -- a count badge or
+ * a leading glyph should not be duplicated in the layer that slides in.
  */
-export function hoverButtonLayers(text: string, trailing = ""): string {
+export function hoverButtonLayers(text: string, trailing = "", icon = ""): string {
   const label = escapeHtml(text);
-  return `<span class="hb-rest">${label}${trailing}</span>` +
+  // The icon rides in the resting layer so it slides out with the label. The layer
+  // that slides in carries the arrow instead, matching the original component.
+  const leading = icon ? `<b class="hb-icon">${escapeHtml(icon)}</b>` : "";
+  return `<span class="hb-rest">${leading}${label}${trailing}</span>` +
     `<span class="hb-hover" aria-hidden="true"><span>${label}</span>${ARROW_RIGHT}</span>` +
     `<span class="hb-dot" aria-hidden="true"></span>`;
 }

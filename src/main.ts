@@ -119,23 +119,23 @@ const SHELL_HTML = `
   </header>
 
   <nav class="command-bar" aria-label="Application commands">
-    <button data-command="new"><b>＋</b> New</button>
+    <button data-command="new">${hoverButtonLayers("New", '', '＋')}</button>
     <button class="primary" data-command="open">${hoverButtonLayers("Open", '')}</button>
-    <button data-command="import"><b>⇥</b> Import Data</button>
+    <button data-command="import">${hoverButtonLayers("Import Data", '', '⇥')}</button>
     <span class="command-divider"></span>
-    <button data-command="save" disabled><b>▣</b> Save</button>
-    <button data-command="saveas" disabled><b>▤</b> Save As</button>
-    <button data-command="export-selection" disabled><b>⇩</b> Export Selection</button>
+    <button data-command="save" disabled>${hoverButtonLayers("Save", '', '▣')}</button>
+    <button data-command="saveas" disabled>${hoverButtonLayers("Save As", '', '▤')}</button>
+    <button data-command="export-selection" disabled>${hoverButtonLayers("Export Selection", '', '⇩')}</button>
     <span class="command-divider"></span>
-    <button data-command="undo" disabled><b>↶</b> Undo</button>
-    <button data-command="redo" disabled><b>↷</b> Redo</button>
+    <button data-command="undo" disabled>${hoverButtonLayers("Undo", '', '↶')}</button>
+    <button data-command="redo" disabled>${hoverButtonLayers("Redo", '', '↷')}</button>
     <span class="command-divider"></span>
-    <button data-command="find" disabled><b>⌕</b> Find</button>
-    <button data-command="replace" disabled><b>⟳</b> Replace</button>
-    <button data-command="goto" disabled><b>#</b> Go To</button>
+    <button data-command="find" disabled>${hoverButtonLayers("Find", '', '⌕')}</button>
+    <button data-command="replace" disabled>${hoverButtonLayers("Replace", '', '⟳')}</button>
+    <button data-command="goto" disabled>${hoverButtonLayers("Go To", '', '#')}</button>
     <span class="command-divider"></span>
-    <button data-command="insert" disabled><b>⊕</b> Insert</button>
-    <button data-command="delete" disabled><b>⌫</b> Delete</button>
+    <button data-command="insert" disabled>${hoverButtonLayers("Insert", '', '⊕')}</button>
+    <button data-command="delete" disabled>${hoverButtonLayers("Delete", '', '⌫')}</button>
     <span class="command-spacer"></span>
   </nav>
 
