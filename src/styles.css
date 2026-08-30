@@ -50,54 +50,54 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --bg-base: #070b11;
-  --bg-deep: #0a1018;
-  --bg-shell: #0d1420;
-  --panel: #111a27;
-  --panel-2: #16212f;
-  --panel-3: #1b2837;
-  --panel-hi: #22303f;
-  --surface-grid: #0b121b;
-  --surface-row: #0e1622;
+  --bg-base: #0a0a0b;
+  --bg-deep: #0d0d0e;
+  --bg-shell: #101011;
+  --panel: #141416;
+  --panel-2: #191a1b;
+  --panel-3: #1e1f21;
+  --panel-hi: #26272a;
+  --surface-grid: #0c0c0d;
+  --surface-row: #121213;
 
-  --line: #1f2c3b;
-  --line-soft: #182433;
-  --line-strong: #2b3c4f;
+  --line: #232427;
+  --line-soft: #1b1c1e;
+  --line-strong: #34363a;
 
-  --text: #dce7f2;
-  --text-strong: #f2f7fc;
-  --muted: #8ba0b6;
-  --faint: #647c93;
-  --dim: #4b6076;
+  --text: #d6d6d3;
+  --text-strong: #f0f0ed;
+  --muted: #8a8a86;
+  --faint: #8a8a85;
+  --dim: #6b6b67;
 
-  --accent: #35a7f0;
-  --accent-2: #52c4ff;
-  --accent-deep: #1a6fa8;
-  --accent-wash: rgba(53, 167, 240, 0.13);
-  --accent-line: rgba(53, 167, 240, 0.36);
+  --accent: #3fb950;
+  --accent-2: #56d364;
+  --accent-deep: #238636;
+  --accent-wash: rgba(63, 185, 80, 0.11);
+  --accent-line: rgba(63, 185, 80, 0.30);
 
-  --amber: #f0a92c;
-  --amber-wash: rgba(240, 169, 44, 0.13);
-  --success: #34c98a;
-  --success-wash: rgba(52, 201, 138, 0.13);
-  --warning: #f0a92c;
-  --danger: #f2555f;
-  --danger-wash: rgba(242, 85, 95, 0.14);
+  --amber: #d29922;
+  --amber-wash: rgba(210, 153, 34, 0.12);
+  --success: #3fb950;
+  --success-wash: rgba(63, 185, 80, 0.12);
+  --warning: #d29922;
+  --danger: #f85149;
+  --danger-wash: rgba(248, 81, 73, 0.13);
   --critical: #ff4d5e;
-  --violet: #a98bf5;
+  --violet: #a371f7;
 
-  --sev-critical: #ff5566;
-  --sev-high: #ff9142;
-  --sev-medium: #f0c341;
-  --sev-low: #4fb3f0;
-  --sev-info: #8299b0;
+  --sev-critical: #f85149;
+  --sev-high: #db6d28;
+  --sev-medium: #d29922;
+  --sev-low: #3fb950;
+  --sev-info: #8b949e;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow: 0 calc(var(--u) * 1) calc(var(--u) * 4) rgba(0, 0, 0, 0.44);
   --shadow-lg: 0 calc(var(--u) * 5) calc(var(--u) * 16) rgba(0, 0, 0, 0.62);
-  --glow: 0 0 0 1px var(--accent-line), 0 0 calc(var(--u) * 5) rgba(53, 167, 240, 0.22);
+  --glow: 0 0 0 1px var(--accent-line), 0 0 calc(var(--u) * 5) rgba(63, 185, 80, 0.20);
 
-  --header-grad: linear-gradient(135deg, #0e1a29 0%, #101d2e 46%, #0b1622 100%);
+  --header-grad: #101011;
   --scroll-thumb: #2c3f54;
   --scroll-thumb-hover: #3d5670;
   --scroll-track: #0b121b;
@@ -107,36 +107,29 @@
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --bg-base: #dde5ee;
-  --bg-deep: #e4ebf3;
-  --bg-shell: #eaf0f6;
+  --bg-base: #e9e9e6;
+  --bg-deep: #efefec;
+  --bg-shell: #f4f4f1;
   --panel: #ffffff;
-  --panel-2: #f4f8fb;
-  --panel-3: #eaf1f7;
-  --panel-hi: #dfe9f2;
+  --panel-2: #f7f7f4;
+  --panel-3: #eeeeea;
+  --panel-hi: #e3e3df;
   --surface-grid: #ffffff;
-  --surface-row: #f6fafd;
+  --surface-row: #fafaf7;
 
-  --line: #ccd9e5;
-  --line-soft: #dde7f0;
-  --line-strong: #aec1d3;
+  --line: #dcdcd7;
+  --line-soft: #e8e8e3;
+  --line-strong: #bfbfb8;
 
-  --text: #22364b;
-  --text-strong: #0e1f31;
-  --muted: #5c7288;
-  --faint: #7d8fa2;
-  --dim: #9aaabb;
+  --text: #26262a;
+  --text-strong: #121214;
+  --muted: #5f5f5b;
+  --faint: #6e6e69;
+  --dim: #888882;
 
-  --accent: #1a72b0;
-  --accent-2: #2a8fd6;
-  --accent-deep: #12557f;
-  --accent-wash: rgba(26, 114, 176, 0.09);
-  --accent-line: rgba(26, 114, 176, 0.3);
 
   --amber: #b1740c;
   --amber-wash: rgba(177, 116, 12, 0.1);
-  --success: #14804f;
-  --success-wash: rgba(20, 128, 79, 0.1);
   --warning: #a9670c;
   --danger: #c03a44;
   --danger-wash: rgba(192, 58, 68, 0.1);
@@ -146,18 +139,26 @@
   --sev-critical: #b0202d;
   --sev-high: #b85f14;
   --sev-medium: #9a7a10;
-  --sev-low: #1a72b0;
   --sev-info: #6b7f93;
 
   --shadow-sm: 0 1px 2px rgba(31, 54, 78, 0.08);
   --shadow: 0 calc(var(--u) * 0.6) calc(var(--u) * 3) rgba(31, 54, 78, 0.11);
   --shadow-lg: 0 calc(var(--u) * 4) calc(var(--u) * 14) rgba(24, 46, 70, 0.2);
-  --glow: 0 0 0 1px var(--accent-line), 0 0 calc(var(--u) * 4) rgba(26, 114, 176, 0.16);
+  --glow: 0 0 0 1px var(--accent-line);
 
-  --header-grad: linear-gradient(135deg, #2b4864 0%, #33546f 48%, #27415a 100%);
+  --header-grad: #f4f4f1;
   --scroll-thumb: #a3b6c8;
   --scroll-thumb-hover: #7e97af;
   --scroll-track: #e3ebf2;
+
+  --accent: #15672c;
+  --accent-2: #15672c;
+  --accent-deep: #14622b;
+  --accent-wash: rgba(26, 127, 55, 0.10);
+  --accent-line: rgba(26, 127, 55, 0.32);
+  --success: #15672c;
+  --success-wash: rgba(26, 127, 55, 0.10);
+  --sev-low: #15672c;
 }
 
 /* ------------------------------------------------------------------- resets */
@@ -255,7 +256,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .brand-lockup p {
   margin: calc(var(--u) * 0.8) 0 0;
   font-size: var(--fs-nano);
-  color: #9dbcd8;
+  color: var(--muted);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -274,7 +275,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   display: block;
   margin-top: calc(var(--u) * 0.8);
   font-size: var(--fs-nano);
-  color: #a6c3dd;
+  color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -290,7 +291,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   border-radius: 99px;
   padding: calc(var(--u) * 1.6) calc(var(--u) * 3.2);
   background: rgba(255, 255, 255, 0.06);
-  color: #dceaf5;
+  color: var(--text);
   font-size: var(--fs-nano);
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -330,7 +331,7 @@ body.app-mode, html:has(body.app-mode), body.app-mode #app { height: 100%; overf
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.06);
-  color: #dceaf5;
+  color: var(--text);
   font-size: var(--fs-sm);
   cursor: pointer;
   transition: background 0.15s var(--ease), transform 0.12s var(--ease);
@@ -380,10 +381,10 @@ body.app-mode, html:has(body.app-mode), body.app-mode #app { height: 100%; overf
   border-radius: 0;
   background: transparent;
   padding: 0 calc(var(--u) * 3);
-  font-weight: 600;
+  font-weight: 500;
   font-size: var(--fs-micro);
-  letter-spacing: 0.02em;
-  color: var(--text);
+  letter-spacing: 0;
+  color: var(--muted);
   cursor: pointer;
   display: inline-flex;
   justify-content: center;
@@ -392,7 +393,8 @@ body.app-mode, html:has(body.app-mode), body.app-mode #app { height: 100%; overf
   border-bottom: 2px solid transparent;
   transition: background 0.14s var(--ease), color 0.14s var(--ease);
 }
-.command-bar button b { font: 600 var(--fs-sm) var(--mono); color: var(--accent-2); }
+.command-bar button b { font: 600 var(--fs-sm) var(--mono); color: var(--faint); }
+.command-bar button:hover:not(:disabled) b { color: var(--accent-2); }
 .command-bar button:hover:not(:disabled) { background: var(--accent-wash); color: var(--accent-2); }
 .command-bar button.primary {
   margin: calc(var(--u) * 2) 0 calc(var(--u) * 2) calc(var(--u) * 2);
@@ -516,6 +518,8 @@ body.app-mode, html:has(body.app-mode), body.app-mode #app { height: 100%; overf
 .rail-section { padding: calc(var(--u) * 3.5) calc(var(--u) * 4); border-bottom: 1px solid var(--line-soft); }
 .compact-section { padding-top: calc(var(--u) * 2.5); }
 .rail-section h3 {
+  text-transform: none;
+  font-weight: 600;
   margin: 0 0 calc(var(--u) * 3);
   color: var(--faint);
   font-size: var(--fs-nano);
@@ -654,7 +658,7 @@ button.subtle:hover:not(:disabled) { background: var(--accent-wash); color: var(
 
 .content-card {
   background: var(--panel);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-soft);
   border-radius: var(--radius-lg);
   padding: calc(var(--u) * 4);
   margin-bottom: calc(var(--u) * 4);
@@ -908,6 +912,7 @@ button.subtle:hover:not(:disabled) { background: var(--accent-wash); color: var(
 .hex-byte:hover, .ascii-byte:hover { background: var(--panel-hi) !important; }
 .hex-byte.selected, .ascii-byte.selected { background: var(--accent-wash); color: var(--accent-2); }
 .hex-byte.current, .ascii-byte.current {
+  color: #0a0a0b !important;
   background: var(--accent) !important;
   color: #fff;
   box-shadow: 0 0 0 1px var(--accent-2), 0 0 calc(var(--u) * 2.5) var(--accent-line);
@@ -1416,6 +1421,14 @@ kbd {
 }
 
 @media (max-width: 1100px) {
+  /*
+   * The shell switches to height:auto below this width so the rails can stack. That
+   * unbounds the byte grid, and virtualization sizes its window from clientHeight --
+   * an unbounded grid therefore renders every row in the file (4,096 rows for 64 KB,
+   * millions for a large image). Capping the grid keeps the window finite.
+   */
+  .hex-grid { max-height: 70vh; }
+
   html, body, #app { overflow: auto; }
   .studio-shell { min-width: 940px; height: auto; min-height: 100vh; grid-template-rows: auto auto auto minmax(680px, 1fr) var(--status-h); }
   .brand-header { min-height: var(--header-h); grid-template-columns: 1fr auto; }
@@ -1468,16 +1481,16 @@ kbd {
   z-index: 5;
   mix-blend-mode: screen;
   background: radial-gradient(circle 300px at var(--mx, 50%) var(--my, 50%),
-    rgba(58, 132, 224, 0.075) 0%,
-    rgba(48, 112, 200, 0.032) 45%,
+    rgba(63, 185, 80, 0.07) 0%,
+    rgba(63, 185, 80, 0.03) 45%,
     transparent 72%);
 }
 
 :root[data-theme="light"] .cursor-spotlight.app-spotlight {
   mix-blend-mode: multiply;
   background: radial-gradient(circle 300px at var(--mx, 50%) var(--my, 50%),
-    rgba(214, 230, 246, 0.55) 0%,
-    rgba(230, 240, 250, 0.8) 45%,
+    rgba(228, 232, 226, 0.55) 0%,
+    rgba(238, 240, 236, 0.8) 45%,
     transparent 72%);
 }
 
@@ -1603,7 +1616,7 @@ body.panel-open { overflow: hidden; }
   transition: background 0.14s var(--ease), color 0.14s var(--ease), border-color 0.14s var(--ease);
 }
 .bit:hover { border-color: var(--accent-line); }
-.bit.on { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+.bit.on { background: var(--accent-2); border-color: var(--accent-2); color: #0a0a0b; }
 
 /* Positional weights, aligned under their switch. */
 .bit-scale { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; margin-top: 3px; }

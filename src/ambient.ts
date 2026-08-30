@@ -79,9 +79,9 @@ export function startBackground(surface: HTMLElement, intensity = 1): () => void
 
   function paintNebula(): void {
     const wash = context.createLinearGradient(0, 0, width, height);
-    wash.addColorStop(0, "#03070f");
+    wash.addColorStop(0, "#070907");
     wash.addColorStop(0.5, "#000000");
-    wash.addColorStop(1, "#040a14");
+    wash.addColorStop(1, "#080b08");
     context.fillStyle = wash;
     context.fillRect(0, 0, width, height);
 
@@ -94,8 +94,8 @@ export function startBackground(surface: HTMLElement, intensity = 1): () => void
       context.fillStyle = gradient;
       context.fillRect(0, 0, width, height);
     };
-    orb(width * (0.3 + Math.sin(t) * 0.08), height * (0.28 + Math.cos(t * 0.8) * 0.07), Math.max(width, height) * 0.42, "rgba(28, 108, 200, 0.20)");
-    orb(width * (0.74 + Math.cos(t * 0.7) * 0.07), height * (0.66 + Math.sin(t * 0.9) * 0.06), Math.max(width, height) * 0.34, "rgba(12, 60, 140, 0.18)");
+    orb(width * (0.3 + Math.sin(t) * 0.08), height * (0.28 + Math.cos(t * 0.8) * 0.07), Math.max(width, height) * 0.42, "rgba(35, 134, 54, 0.20)");
+    orb(width * (0.74 + Math.cos(t * 0.7) * 0.07), height * (0.66 + Math.sin(t * 0.9) * 0.06), Math.max(width, height) * 0.34, "rgba(22, 90, 40, 0.18)");
   }
 
   function draw(): void {
@@ -118,8 +118,8 @@ export function startBackground(surface: HTMLElement, intensity = 1): () => void
         if (glyphY < -cellSize || glyphY > height) continue;
         // Head glyph is brightest; the tail fades out behind it.
         const fade = 1 - i / column.length;
-        if (i === 0) context.fillStyle = `rgba(190, 235, 255, ${((0.85 * fade + 0.15) * intensity).toFixed(3)})`;
-        else context.fillStyle = `rgba(70, 160, 240, ${(fade * 0.5 * intensity).toFixed(3)})`;
+        if (i === 0) context.fillStyle = `rgba(190, 255, 200, ${((0.85 * fade + 0.15) * intensity).toFixed(3)})`;
+        else context.fillStyle = `rgba(63, 185, 80, ${(fade * 0.5 * intensity).toFixed(3)})`;
         context.fillText(column.glyphs[i] ?? "0", column.x, glyphY);
       }
       // Occasionally mutate a glyph so the columns are never static strings.
@@ -166,7 +166,7 @@ export function startBackground(surface: HTMLElement, intensity = 1): () => void
     context.textBaseline = "top";
     for (const column of columns) {
       for (let i = 0; i < column.length; i += 1) {
-        context.fillStyle = `rgba(70, 160, 240, ${((1 - i / column.length) * 0.35 * intensity).toFixed(3)})`;
+        context.fillStyle = `rgba(63, 185, 80, ${((1 - i / column.length) * 0.35 * intensity).toFixed(3)})`;
         context.fillText(column.glyphs[i] ?? "0", column.x, column.y - i * cellSize);
       }
     }

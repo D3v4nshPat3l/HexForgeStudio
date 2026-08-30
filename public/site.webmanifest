@@ -3,7 +3,7 @@
   "short_name": "HexForge",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#070b11",
-  "theme_color": "#0d1420",
+  "background_color": "#0a0a0b",
+  "theme_color": "#0a0a0b",
   "icons": [{"src":"favicon.svg","sizes":"any","type":"image/svg+xml"}]
 }

@@ -9,23 +9,23 @@ export const BRAND_MARK = `
 <svg viewBox="0 0 128 128" aria-hidden="true" focusable="false">
   <defs>
     <linearGradient id="hfCore" x1="0" y1="0" x2="0.7" y2="1">
-      <stop offset="0" stop-color="#00e5ff"/>
-      <stop offset="0.42" stop-color="#1f8fff"/>
-      <stop offset="1" stop-color="#0a2fb8"/>
+      <stop offset="0" stop-color="#7ee787"/>
+      <stop offset="0.42" stop-color="#3fb950"/>
+      <stop offset="1" stop-color="#1a5c2a"/>
     </linearGradient>
     <linearGradient id="hfRim" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#7ff4ff"/>
-      <stop offset="0.5" stop-color="#2b9dff"/>
-      <stop offset="1" stop-color="#0b3a86"/>
+      <stop offset="0" stop-color="#8ff0a4"/>
+      <stop offset="0.5" stop-color="#3fb950"/>
+      <stop offset="1" stop-color="#17431f"/>
     </linearGradient>
     <linearGradient id="hfScan" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#7ff4ff" stop-opacity="0"/>
-      <stop offset="0.5" stop-color="#7ff4ff" stop-opacity="0.9"/>
-      <stop offset="1" stop-color="#7ff4ff" stop-opacity="0"/>
+      <stop offset="0" stop-color="#8ff0a4" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#8ff0a4" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#8ff0a4" stop-opacity="0"/>
     </linearGradient>
     <radialGradient id="hfGlow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#1f8fff" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#1f8fff" stop-opacity="0"/>
+      <stop offset="0" stop-color="#3fb950" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#3fb950" stop-opacity="0"/>
     </radialGradient>
     <filter id="hfBloom" x="-60%" y="-60%" width="220%" height="220%">
       <feGaussianBlur stdDeviation="2.6" result="b"/>
@@ -36,24 +36,24 @@ export const BRAND_MARK = `
   <circle cx="64" cy="64" r="60" fill="url(#hfGlow)"/>
 
   <!-- Outer hex shell -->
-  <path d="M64 6 111 33v62L64 122 17 95V33Z" fill="#04070f"/>
+  <path d="M64 6 111 33v62L64 122 17 95V33Z" fill="#080a08"/>
   <path d="M64 6 111 33v62L64 122 17 95V33Z" fill="none" stroke="url(#hfRim)" stroke-width="3.2" stroke-linejoin="round"/>
 
   <!-- Inner circuit hex -->
-  <path d="M64 20 98 39.5v49L64 108 30 88.5v-49Z" fill="none" stroke="#0e2b52" stroke-width="1.4"/>
+  <path d="M64 20 98 39.5v49L64 108 30 88.5v-49Z" fill="none" stroke="#1c3b22" stroke-width="1.4"/>
 
   <!-- Circuit traces -->
-  <g stroke="#1a4d84" stroke-width="1.6" stroke-linecap="round" fill="none">
+  <g stroke="#2a5c33" stroke-width="1.6" stroke-linecap="round" fill="none">
     <path d="M30 52h-11M30 76h-11M98 52h11M98 76h11M64 20V9M64 108v11"/>
   </g>
-  <g fill="#2b9dff">
+  <g fill="#3fb950">
     <circle cx="17" cy="52" r="2.3"/><circle cx="17" cy="76" r="2.3"/>
     <circle cx="111" cy="52" r="2.3"/><circle cx="111" cy="76" r="2.3"/>
   </g>
 
   <!-- Byte grid backdrop -->
-  <g fill="#123" opacity="0"/>
-  <g font-family="monospace" font-size="7.5" fill="#14406f" opacity="0.85">
+  <g fill="#122" opacity="0"/>
+  <g font-family="monospace" font-size="7.5" fill="#2c5c34" opacity="0.85">
     <text x="40" y="46">4F</text><text x="58" y="46">2A</text><text x="76" y="46">FF</text>
     <text x="40" y="88">1C</text><text x="58" y="88">B7</text><text x="76" y="88">3E</text>
   </g>
@@ -69,6 +69,6 @@ export const BRAND_MARK = `
   <rect x="17" y="58" width="94" height="12" fill="url(#hfScan)" opacity="0.5"/>
 
   <!-- Core node -->
-  <circle cx="64" cy="64" r="5.4" fill="#04070f"/>
-  <circle cx="64" cy="64" r="2.6" fill="#7ff4ff" filter="url(#hfBloom)"/>
+  <circle cx="64" cy="64" r="5.4" fill="#080a08"/>
+  <circle cx="64" cy="64" r="2.6" fill="#8ff0a4" filter="url(#hfBloom)"/>
 </svg>`;
