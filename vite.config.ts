@@ -14,7 +14,10 @@ export default defineConfig({
   },
   build: {
     target: "es2022",
-    sourcemap: true,
+    // Source maps ship the full TypeScript source alongside the bundle. Useful locally,
+    // but this repository is "all rights reserved" -- publishing them on a public
+    // deployment would hand over the source. Opt in with SOURCEMAP=1 when debugging.
+    sourcemap: process.env.SOURCEMAP === "1",
     chunkSizeWarningLimit: 1200
   },
   worker: { format: "es" }

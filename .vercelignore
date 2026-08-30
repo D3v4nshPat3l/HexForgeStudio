@@ -1,0 +1,8 @@
+# The Python launcher is for local use only; Vercel serves the built dist/ directly.
+launcher/
+run.py
+requirements.txt
+start.bat
+start.sh
+.venv/
+docs/

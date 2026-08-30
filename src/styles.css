@@ -1486,3 +1486,190 @@ body.panel-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .cursor-spotlight.app-spotlight { display: none; }
 }
+
+/* ============================================================================
+   Interactive hover button
+   ----------------------------------------------------------------------------
+   Native port of the shadcn/React InteractiveHoverButton. Resting label slides out,
+   a second label slides in with a trailing arrow, and a dot expands to flood the
+   surface. No React or Tailwind in this project, so it is markup plus CSS.
+   ========================================================================== */
+
+.forge-btn {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-width: calc(var(--u) * 22);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3.5);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: var(--fs-nano);
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.25s var(--ease), color 0.25s var(--ease);
+}
+.forge-btn:disabled { opacity: 0.4; cursor: default; }
+
+.forge-btn-rest {
+  display: inline-block;
+  transform: translateX(2px);
+  transition: transform 0.3s var(--ease), opacity 0.3s var(--ease);
+}
+.forge-btn-hover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 1.2);
+  transform: translateX(calc(var(--u) * 6));
+  opacity: 0;
+  transition: transform 0.3s var(--ease), opacity 0.3s var(--ease);
+}
+.forge-btn-arrow { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* The flood: a dot that scales up to cover the button. */
+.forge-btn-dot {
+  position: absolute;
+  left: 20%;
+  top: 40%;
+  z-index: 1;
+  width: calc(var(--u) * 1.4);
+  height: calc(var(--u) * 1.4);
+  border-radius: 999px;
+  background: var(--accent-2);
+  transform: scale(1);
+  transition: all 0.3s var(--ease);
+}
+.forge-btn:hover:not(:disabled) .forge-btn-rest { transform: translateX(calc(var(--u) * 6)); opacity: 0; }
+.forge-btn:hover:not(:disabled) .forge-btn-hover { transform: translateX(-2px); opacity: 1; color: #fff; }
+.forge-btn:hover:not(:disabled) .forge-btn-dot { left: 0; top: 0; width: 100%; height: 100%; border-radius: 999px; transform: scale(1.05); }
+.forge-btn:hover:not(:disabled) { border-color: var(--accent-2); }
+.forge-btn:active:not(:disabled) { transform: translateY(1px); }
+
+.forge-btn.is-primary .forge-btn-dot { background: var(--accent-2); }
+.forge-btn.is-danger .forge-btn-dot { background: var(--danger); }
+.forge-btn.is-ghost { background: transparent; }
+.forge-btn.is-compact { min-width: calc(var(--u) * 17); padding: calc(var(--u) * 1.5) calc(var(--u) * 3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-btn-rest, .forge-btn-hover, .forge-btn-dot { transition: none; }
+}
+
+/* ============================================================================
+   Inline byte editor
+   ----------------------------------------------------------------------------
+   Opens inside the grid on the row that owns the cursor, rather than in a side
+   panel, so the byte and the controls that change it stay in the same place.
+   ========================================================================== */
+
+.forge-slot {
+  position: absolute;
+  left: 0;
+  z-index: 9;
+  width: max-content;
+  min-width: 100%;
+  padding: calc(var(--u) * 1.5) calc(var(--u) * 2.5) calc(var(--u) * 2.5) var(--offset-w);
+  pointer-events: none;
+}
+.byte-forge {
+  pointer-events: auto;
+  display: inline-grid;
+  grid-template-columns: auto auto auto auto;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 2.5) calc(var(--u) * 3.5);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  box-shadow: var(--shadow-lg);
+}
+
+.bf-identity { display: grid; gap: calc(var(--u) * 0.8); }
+.bf-label { font-size: var(--fs-nano); letter-spacing: 0.18em; color: var(--faint); }
+.bf-offset { font: 700 var(--fs-xs) var(--mono); color: var(--accent-2); }
+.bf-dirty {
+  justify-self: start;
+  padding: 1px calc(var(--u) * 1.4);
+  border-radius: 999px;
+  background: var(--amber-wash);
+  color: var(--amber);
+  font-size: var(--fs-nano);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* Nibble dials */
+.bf-nibbles { display: flex; gap: calc(var(--u) * 2); }
+.bf-nibble {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: calc(var(--u) * 1.2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-3);
+}
+.bf-nibble.pending { border-color: var(--amber); background: var(--amber-wash); }
+.bf-nibble-input {
+  width: calc(var(--u) * 7);
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-strong);
+  font: 700 var(--fs-lg) var(--mono);
+  text-align: center;
+  text-transform: uppercase;
+}
+.bf-step {
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 3.4);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--fs-nano);
+  cursor: pointer;
+}
+.bf-step:hover { background: var(--accent-wash); color: var(--accent-2); }
+.bf-nibble-tag { font-size: var(--fs-nano); letter-spacing: 0.1em; color: var(--dim); }
+
+/* Bit switches, MSB first */
+.bf-bits { display: flex; gap: calc(var(--u) * 0.8); }
+.bf-bit {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  width: calc(var(--u) * 6.4);
+  padding: calc(var(--u) * 1) 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-3);
+  cursor: pointer;
+  transition: background 0.16s var(--ease), border-color 0.16s var(--ease), transform 0.12s var(--ease);
+}
+.bf-bit b { font: 700 var(--fs-sm) var(--mono); color: var(--dim); }
+.bf-bit small { font-size: var(--fs-nano); color: var(--dim); }
+.bf-bit:hover { border-color: var(--accent-line); transform: translateY(-1px); }
+.bf-bit.on { background: var(--accent-wash); border-color: var(--accent-2); }
+.bf-bit.on b { color: var(--accent-2); }
+/* Separate the nibbles visually — bit 3 is the low-nibble boundary. */
+.bf-bit:nth-child(4) { margin-right: calc(var(--u) * 1.6); }
+
+.bf-readout { display: flex; gap: calc(var(--u) * 2.5); margin: 0; }
+.bf-readout > div { display: grid; gap: 1px; }
+.bf-readout dt { font-size: var(--fs-nano); letter-spacing: 0.1em; color: var(--dim); }
+.bf-readout dd { margin: 0; font: 700 var(--fs-xs) var(--mono); color: var(--text-strong); }
+
+.bf-actions { display: flex; gap: calc(var(--u) * 1.5); }
+
+.hex-row.has-cursor .row-offset { color: var(--accent-2); }
+
+@media (max-width: 1400px) {
+  .byte-forge { grid-template-columns: auto auto; row-gap: calc(var(--u) * 2.5); }
+}
