@@ -80,6 +80,15 @@ const tabs: EditorTab[] = [];
 let activeId: string | null = null;
 let activeView: MainView = "hex";
 let bytesPerRow = 16;
+
+/**
+ * When true, bytes per row is recomputed from the grid width instead of being fixed.
+ *
+ * A hex editor should spend extra width on more bytes, not on empty space. Hiding a
+ * side panel or widening the window therefore shows more of the file rather than
+ * leaving a gap where the panel used to be.
+ */
+let autoBytesPerRow = true;
 let characterMode: "windows-1252" | "ascii" | "latin1" = "windows-1252";
 let renderGeneration = 0;
 
@@ -110,7 +119,15 @@ function hexRowHeight(): number {
   hexRowHeightCache = Number.isFinite(parsed) && parsed > 0 ? parsed : 32;
   return hexRowHeightCache;
 }
-window.addEventListener("resize", () => { hexRowHeightCache = 0; });
+let resizeFrame = 0;
+window.addEventListener("resize", () => {
+  hexRowHeightCache = 0;
+  if (resizeFrame !== 0) return;
+  resizeFrame = window.requestAnimationFrame(() => {
+    resizeFrame = 0;
+    if (activeView === "hex" && refitBytesPerRow()) renderHexView();
+  });
+});
 const MAX_HEX_SCROLL_HEIGHT = 30_000_000;
 const HEX_OVERSCAN_ROWS = 64;
 
@@ -694,7 +711,7 @@ function renderViewTabs(): void {
 }
 
 function renderActiveView(): void {
-  if (activeView === "hex") renderHexView();
+  if (activeView === "hex") { refitBytesPerRow(); renderHexView(); }
   else if (activeView === "signature") renderSignatureView();
   else if (activeView === "intel") renderIntelView();
   else if (activeView === "forensics") renderForensicsView();
@@ -939,11 +956,29 @@ function visibleCharacter(byte: number): string {
   return windows1252Character(byte);
 }
 
+/**
+ * Width of one rendered row, measured from the live CSS values.
+ *
+ * These used to be hard-coded pixels (112 / 29 / 13) copied from the stylesheet. Once
+ * the type scale changed they no longer matched anything, so the horizontal scroll
+ * range was wrong and rows were pinned to a stale width.
+ */
 function hexContentWidth(): number {
-  const offset = 112;
-  const hex = bytesPerRow * 29 + Math.max(0, bytesPerRow - 1) * 2;
-  const ascii = bytesPerRow * 13 + 13;
-  return 24 + offset + 14 + hex + 14 + ascii;
+  const root = getComputedStyle(document.documentElement);
+  const px = (name: string, fallback: number): number => {
+    const value = Number.parseFloat(root.getPropertyValue(name));
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+  };
+  const unit = px("--u", 5);
+  const offset = px("--offset-w", 124);
+  const byte = px("--byte-w", 32);
+  const char = px("--char-w", 15);
+
+  const gap = unit * 3.5;          // .hex-row column gap
+  const padding = unit * 3 * 2;    // .hex-row horizontal padding
+  const hex = bytesPerRow * byte + Math.max(0, bytesPerRow - 1) * 2;
+  const ascii = bytesPerRow * char + char;
+  return Math.ceil(padding + offset + gap + hex + gap + ascii);
 }
 
 function updateContinuousPageIndicator(tab: EditorTab, topRow: number): void {
@@ -966,8 +1001,8 @@ function renderHexView(): void {
     return;
   }
   viewContent.innerHTML = `<div class="hex-view">
-    <div class="hex-options"><div class="segmented"><button data-input-mode="hex" class="${tab.inputMode === "hex" ? "active" : ""}">HEX</button><button data-input-mode="text" class="${tab.inputMode === "text" ? "active" : ""}">TEXT</button></div><label>Bytes / row<select id="bytesPerRowSelect"><option ${bytesPerRow === 8 ? "selected" : ""}>8</option><option ${bytesPerRow === 16 ? "selected" : ""}>16</option><option ${bytesPerRow === 24 ? "selected" : ""}>24</option><option ${bytesPerRow === 32 ? "selected" : ""}>32</option></select></label><label>Character view<select id="characterModeSelect"><option value="windows-1252" ${characterMode === "windows-1252" ? "selected" : ""}>Windows-1252</option><option value="ascii" ${characterMode === "ascii" ? "selected" : ""}>ASCII</option><option value="latin1" ${characterMode === "latin1" ? "selected" : ""}>Latin-1</option></select></label><button type="button" class="wide-toggle" data-action="toggle-wide" title="Hide the side panels and give the grid the full window (W)">${wideView ? "Exit wide view" : "Wide view"}</button><span>Select a byte to edit its bits in the right panel.</span></div>
-    <div class="hex-header-viewport" id="hexHeaderViewport"><div class="hex-column-header" style="--row-bytes:${bytesPerRow};min-width:${hexContentWidth()}px"><span class="offset-head">OFFSET</span><div style="--row-bytes:${bytesPerRow}">${headerBytes}</div><span class="ascii-head">TEXT (${characterMode === "windows-1252" ? "CP1252" : characterMode.toUpperCase()})</span></div></div>
+    <div class="hex-options"><div class="segmented"><button data-input-mode="hex" class="${tab.inputMode === "hex" ? "active" : ""}">HEX</button><button data-input-mode="text" class="${tab.inputMode === "text" ? "active" : ""}">TEXT</button></div><label>Bytes / row<select id="bytesPerRowSelect"><option value="auto" ${autoBytesPerRow ? "selected" : ""}>Auto (${bytesPerRow})</option><option ${!autoBytesPerRow && bytesPerRow === 8 ? "selected" : ""}>8</option><option ${!autoBytesPerRow && bytesPerRow === 16 ? "selected" : ""}>16</option><option ${!autoBytesPerRow && bytesPerRow === 24 ? "selected" : ""}>24</option><option ${!autoBytesPerRow && bytesPerRow === 32 ? "selected" : ""}>32</option></select></label><label>Character view<select id="characterModeSelect"><option value="windows-1252" ${characterMode === "windows-1252" ? "selected" : ""}>Windows-1252</option><option value="ascii" ${characterMode === "ascii" ? "selected" : ""}>ASCII</option><option value="latin1" ${characterMode === "latin1" ? "selected" : ""}>Latin-1</option></select></label><button type="button" class="wide-toggle" data-action="toggle-wide" title="Hide the side panels and give the grid the full window (W)">${wideView ? "Exit wide view" : "Wide view"}</button><span>Select a byte to edit its bits in the right panel.</span></div>
+    <div class="hex-header-viewport" id="hexHeaderViewport"><div class="hex-column-header" style="--row-bytes:${bytesPerRow}"><span class="offset-head">OFFSET</span><div style="--row-bytes:${bytesPerRow}">${headerBytes}</div><span class="ascii-head">TEXT (${characterMode === "windows-1252" ? "CP1252" : characterMode.toUpperCase()})</span></div></div>
     <div class="hex-top-scroll" id="hexTopScroll" title="Horizontal scrollbar"><div id="hexTopSpacer" style="width:${hexContentWidth()}px"></div></div>
     <div class="hex-grid" id="hexGrid" tabindex="0" aria-label="Hex data, continuously scrollable"><div class="hex-virtual-spacer" id="hexVirtualSpacer"></div><div class="hex-rows" id="hexRows"></div></div>
   </div>`;
@@ -983,7 +1018,7 @@ function renderHexView(): void {
   // once the user had scrolled away.
   const restoreRows = Math.max(1, Math.ceil(tab.file.size / bytesPerRow));
   spacer.style.height = `${virtualHexHeight(restoreRows)}px`;
-  spacer.style.width = `${hexContentWidth()}px`;
+  spacer.style.width = `${Math.max(hexContentWidth(), grid.clientWidth)}px`;
 
   grid.scrollTop = tab.hexScrollTop;
   grid.scrollLeft = tab.hexScrollLeft;
@@ -1033,7 +1068,7 @@ async function renderHexRows(tab: EditorTab): Promise<void> {
   const totalRows = Math.max(1, Math.ceil(tab.file.size / bytesPerRow));
   const virtualHeight = virtualHexHeight(totalRows);
   spacer.style.height = `${virtualHeight}px`;
-  spacer.style.width = `${hexContentWidth()}px`;
+  spacer.style.width = `${Math.max(hexContentWidth(), grid.clientWidth)}px`;
   const centerRow = hexScrollTopToRow(grid.scrollTop, totalRows, virtualHeight, grid.clientHeight);
   const visibleRows = Math.ceil(Math.max(400, grid.clientHeight) / hexRowHeight()) + HEX_OVERSCAN_ROWS * 2;
   const startRow = Math.max(0, Math.min(totalRows - 1, centerRow - HEX_OVERSCAN_ROWS));
@@ -1075,7 +1110,7 @@ async function renderHexRows(tab: EditorTab): Promise<void> {
     }
     const top = hexRowToTop(row, totalRows, virtualHeight);
     const holdsCursor = tab.cursor >= absoluteStart && tab.cursor < absoluteStart + bytesPerRow;
-    rows.push(`<div class="hex-row${holdsCursor ? " has-cursor" : ""}" style="top:${top}px;min-width:${hexContentWidth()}px"><button class="row-offset" data-byte-offset="${absoluteStart}">${formatOffset(absoluteStart)}</button><div class="hex-cells" style="--row-bytes:${bytesPerRow}">${hexCells.join("")}</div><div class="ascii-cells" style="--row-bytes:${bytesPerRow}">${asciiCells.join("")}</div></div>`);
+    rows.push(`<div class="hex-row${holdsCursor ? " has-cursor" : ""}" style="top:${top}px"><button class="row-offset" data-byte-offset="${absoluteStart}">${formatOffset(absoluteStart)}</button><div class="hex-cells" style="--row-bytes:${bytesPerRow}">${hexCells.join("")}</div><div class="ascii-cells" style="--row-bytes:${bytesPerRow}">${asciiCells.join("")}</div></div>`);
   }
   rowsTarget.innerHTML = rows.join("");
   updateContinuousPageIndicator(tab, centerRow);
@@ -1706,7 +1741,7 @@ app.addEventListener("click", (event) => {
     wideView = !wideView;
     updateAll();
     // Row geometry depends on the grid width, so re-measure after the layout settles.
-    window.requestAnimationFrame(() => { hexRowHeightCache = 0; renderHexView(); });
+    window.requestAnimationFrame(() => { hexRowHeightCache = 0; refitBytesPerRow(); renderHexView(); });
     return;
   }
 
@@ -1855,7 +1890,13 @@ app.addEventListener("change", (event) => {
   const target = event.target as HTMLInputElement | HTMLSelectElement;
   const tab = activeTab();
   if (target.id === "pageSizeSelect" && tab) { tab.pageSize = Number(target.value); tab.page = Math.floor(tab.cursor / tab.pageSize); updateAll(); return; }
-  if (target.id === "bytesPerRowSelect") { bytesPerRow = Number(target.value); if (tab) { tab.hexScrollTop = 0; tab.hexScrollLeft = 0; } renderHexView(); return; }
+  if (target.id === "bytesPerRowSelect") {
+    if (target.value === "auto") { autoBytesPerRow = true; refitBytesPerRow(); }
+    else { autoBytesPerRow = false; bytesPerRow = Number(target.value); }
+    if (tab) { tab.hexScrollTop = 0; tab.hexScrollLeft = 0; invalidateReadCache(tab); }
+    renderHexView();
+    return;
+  }
   if (target.dataset.nibble) {
     const tabNow = activeTab();
     const digit = target.value.trim().toLowerCase();
@@ -1929,7 +1970,7 @@ app.addEventListener("keydown", (event) => {
       event.preventDefault();
       wideView = !wideView;
       updateAll();
-      window.requestAnimationFrame(() => { hexRowHeightCache = 0; renderHexView(); });
+      window.requestAnimationFrame(() => { hexRowHeightCache = 0; refitBytesPerRow(); renderHexView(); });
       return;
     }
   }
@@ -2385,7 +2426,7 @@ function bindRailResizer(id: string, side: "left" | "right"): void {
       handle.removeEventListener("pointerup", onUp);
       saveRailLayout();
       hexRowHeightCache = 0;
-      if (activeView === "hex") renderHexView();
+      if (activeView === "hex") { refitBytesPerRow(); renderHexView(); }
     };
     handle.addEventListener("pointermove", onMove);
     handle.addEventListener("pointerup", onUp);
@@ -2399,7 +2440,7 @@ function bindRailResizer(id: string, side: "left" | "right"): void {
     else return;
     saveRailLayout();
     hexRowHeightCache = 0;
-    if (activeView === "hex") renderHexView();
+    if (activeView === "hex") { refitBytesPerRow(); renderHexView(); }
   });
 }
 
@@ -2412,7 +2453,7 @@ function toggleRail(side: "left" | "right"): void {
   renderRailToggles();
   window.requestAnimationFrame(() => {
     hexRowHeightCache = 0;
-    if (activeView === "hex") renderHexView();
+    if (activeView === "hex") { refitBytesPerRow(); renderHexView(); }
   });
 }
 
@@ -2425,4 +2466,43 @@ function renderRailToggles(): void {
       title="${rails.leftHidden ? "Show" : "Hide"} the file navigator">◧ Navigator</button>` +
     `<button type="button" class="rail-restore${rails.rightHidden ? "" : " active"}" data-action="collapse-right"
       title="${rails.rightHidden ? "Show" : "Hide"} the byte editor">Byte editor ◨</button>`;
+}
+
+
+/**
+ * Bytes that fit one row at the current grid width.
+ *
+ * Each byte costs its hex cell plus the 2px column gap, plus one character cell in the
+ * text column. Rounded down to a multiple of four so offsets stay easy to read, and
+ * clamped to a sane range.
+ */
+function fittingBytesPerRow(): number {
+  const grid = document.querySelector<HTMLElement>("#hexGrid");
+  if (!grid || grid.clientWidth === 0) return bytesPerRow;
+
+  const root = getComputedStyle(document.documentElement);
+  const px = (name: string, fallback: number): number => {
+    const value = Number.parseFloat(root.getPropertyValue(name));
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+  };
+  const unit = px("--u", 5);
+  const offset = px("--offset-w", 124);
+  const byte = px("--byte-w", 32);
+  const char = px("--char-w", 15);
+
+  // Row padding, the offset column, both column gaps, and the character column's
+  // trailing pad, all of which exist regardless of how many bytes are shown.
+  const fixed = unit * 6 + offset + unit * 7 + char + 4;
+  const perByte = byte + 2 + char;
+  const fits = Math.floor((grid.clientWidth - fixed) / perByte);
+  return Math.max(4, Math.min(64, Math.floor(fits / 4) * 4));
+}
+
+/** Re-fits the row width, returning true when the count actually changed. */
+function refitBytesPerRow(): boolean {
+  if (!autoBytesPerRow) return false;
+  const next = fittingBytesPerRow();
+  if (next === bytesPerRow) return false;
+  bytesPerRow = next;
+  return true;
 }

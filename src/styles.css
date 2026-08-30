@@ -1960,19 +1960,46 @@ textarea.injector-source {
    the rail's track and its resizer to zero so the byte grid takes the space.
    ========================================================================== */
 
+/*
+ * A 6px transparent strip is effectively invisible and hard to hit. The handle now
+ * shows a persistent grip, and its hit area is widened with a pseudo-element rather
+ * than by making the track itself wider, which would eat grid space.
+ */
 .rail-resizer {
-  width: calc(var(--u) * 1.2);
+  position: relative;
+  width: calc(var(--u) * 1.6);
   align-self: stretch;
   border-radius: 999px;
-  background: transparent;
+  background: var(--line);
   cursor: col-resize;
   transition: background 0.15s var(--ease);
   touch-action: none;
 }
+.rail-resizer::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc(var(--u) * -1.4);
+  cursor: col-resize;
+}
+/* Grip marks, so the handle reads as draggable at rest. */
+.rail-resizer::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: calc(var(--u) * 7);
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: var(--dim);
+  opacity: 0.9;
+}
 .rail-resizer:hover,
-.rail-resizer:focus-visible,
-.rail-resizer.dragging { background: var(--accent-line); }
+.rail-resizer:focus-visible { background: var(--accent-line); }
+.rail-resizer:hover::after,
+.rail-resizer:focus-visible::after { background: var(--accent-2); }
 .rail-resizer.dragging { background: var(--accent-2); }
+.rail-resizer.dragging::after { background: var(--on-accent); }
 
 /* A hidden rail collapses its own track and the handle beside it. */
 .studio-shell.left-hidden .app-workspace { grid-template-columns: 0 0 minmax(0, 1fr) auto var(--rail-right); }
@@ -2089,3 +2116,24 @@ textarea.injector-source {
 .shell-item-head b { font-size: var(--fs-nano); font-weight: 600; color: var(--text-strong); }
 .shell-item-head em { font-style: normal; font-size: var(--fs-nano); color: var(--faint); }
 .shell-item code { display: block; line-height: 1.55; }
+
+
+/* ============================================================================
+   Byte grid fill
+   ----------------------------------------------------------------------------
+   Rows and the column header stretch to whatever width the grid currently has,
+   so hiding a side panel widens the striping and the character column with it
+   instead of leaving dead space where the panel used to be.
+   ========================================================================== */
+
+.hex-column-header,
+.hex-row { width: max-content; min-width: 100%; }
+
+/* The character column is pinned right, so it follows the grid as it widens. */
+.ascii-cells { margin-left: auto; }
+
+/*
+ * Breathing room under the last row. Without it the final line sits flush against
+ * the status bar and reads as clipped.
+ */
+.hex-virtual-spacer { padding-bottom: var(--row-h); }
