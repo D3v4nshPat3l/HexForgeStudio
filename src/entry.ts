@@ -3,6 +3,7 @@ import "./landing.css";
 import { renderLanding } from "./landing";
 import { bindMobileMenu, bindPanels, startBackground, startCounters, startSpotlight } from "./ambient";
 import { applyTheme, resolveInitialTheme, toggleTheme, type ThemeName } from "./theme";
+import { inject } from "@vercel/analytics";
 
 /**
  * Application entry and route switch.
@@ -94,6 +95,9 @@ function route(): void {
 
 window.addEventListener("hashchange", route);
 route();
+
+// Initialize Vercel Web Analytics
+inject();
 
 
 /**
