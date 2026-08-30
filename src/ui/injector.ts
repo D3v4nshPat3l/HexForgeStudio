@@ -7,6 +7,11 @@ import { ENCODINGS, PAYLOAD_CATEGORIES, payloadCount, type EncodingId, type Payl
  * encoded. Every write goes through the editor's normal patch and undo machinery, so an
  * injection is reversible like any other edit and nothing touches the file on disk until
  * the user saves.
+ *
+ * The library is a starting point, not a constraint: the source box is editable, and
+ * anything typed there is what gets encoded and written. Selecting a library entry
+ * loads it into that box rather than bypassing it, so there is one source of truth for
+ * what will be injected.
  */
 
 export type InjectMode = "overwrite-cursor" | "insert-cursor" | "overwrite-selection" | "append" | "offset";
@@ -18,11 +23,17 @@ export interface InjectorState {
   mode: InjectMode;
   /** Target for the explicit-offset mode, as typed. */
   offsetText: string;
-  /** Optional substitutions applied before encoding, for placeholder-bearing payloads. */
+  /** Substitutions applied before encoding, for placeholder-bearing payloads. */
   host: string;
   port: string;
   repeat: number;
   nullTerminate: boolean;
+  /**
+   * The text that will actually be injected. Seeded from the selected library entry
+   * and then freely editable; `edited` tracks whether it still matches the library.
+   */
+  source: string;
+  edited: boolean;
 }
 
 export const DEFAULT_INJECTOR_STATE: InjectorState = {
@@ -34,16 +45,23 @@ export const DEFAULT_INJECTOR_STATE: InjectorState = {
   host: "127.0.0.1",
   port: "4444",
   repeat: 1,
-  nullTerminate: false
+  nullTerminate: false,
+  source: PAYLOAD_CATEGORIES[0]?.payloads[0]?.value ?? "",
+  edited: false
 };
 
 const MODES: Array<{ id: InjectMode; label: string; note: string }> = [
   { id: "overwrite-cursor", label: "Overwrite at cursor", note: "Replaces bytes from the cursor onward; file size unchanged" },
   { id: "insert-cursor", label: "Insert at cursor", note: "Shifts the remainder of the file right; size grows" },
-  { id: "overwrite-selection", label: "Overwrite selection", note: "Fills the current selection, truncating or padding to fit" },
+  { id: "overwrite-selection", label: "Overwrite selection", note: "Fills the current selection, truncating to fit" },
   { id: "offset", label: "Insert at offset", note: "Inserts at a specific offset you type" },
   { id: "append", label: "Append to end", note: "Adds to the tail of the file" }
 ];
+
+export function lookupPayload(category: PayloadCategoryId, index: number): string {
+  const group = PAYLOAD_CATEGORIES.find((item) => item.id === category) ?? PAYLOAD_CATEGORIES[0]!;
+  return group.payloads[Math.min(index, group.payloads.length - 1)]?.value ?? "";
+}
 
 export interface InjectorRenderInput {
   state: InjectorState;
@@ -58,8 +76,8 @@ export interface InjectorRenderInput {
 export function renderInjectorView(input: InjectorRenderInput): string {
   const { state, hasFile, cursor, selectionLength, fileSize, preview } = input;
   const category = PAYLOAD_CATEGORIES.find((item) => item.id === state.category) ?? PAYLOAD_CATEGORIES[0]!;
-  const payload = category.payloads[Math.min(state.payloadIndex, category.payloads.length - 1)] ?? category.payloads[0]!;
   const mode = MODES.find((item) => item.id === state.mode) ?? MODES[0]!;
+  const usesPlaceholders = /LISTENER_HOST|LISTENER_PORT/.test(state.source);
 
   const hexPreview = [...preview.slice(0, 512)]
     .map((byte) => byte.toString(16).padStart(2, "0").toUpperCase())
@@ -71,28 +89,58 @@ export function renderInjectorView(input: InjectorRenderInput): string {
   return `<div class="content-scroll injector-view">
     <section class="content-card">
       <div class="card-heading">
-        <h3>PAYLOAD INJECTOR</h3>
+        <h3>PAYLOAD LIBRARY</h3>
         <span>${PAYLOAD_CATEGORIES.length} categories · ${payloadCount()} payloads</span>
       </div>
       <p>
-        Insert a known test payload into the open buffer at a position you choose. Writes go
-        through the normal edit history, so an injection can be undone and nothing reaches
-        disk until you save or export.
+        Pick an entry to load it into the source box below, or write your own. Whatever is
+        in that box is what gets encoded and written.
       </p>
 
+      <div class="payload-browser">
+        <div class="payload-categories" role="tablist" aria-label="Payload categories">
+          ${PAYLOAD_CATEGORIES.map((item) => `
+            <button type="button" class="payload-cat${item.id === state.category ? " active" : ""}"
+              data-payload-category="${item.id}" role="tab" aria-selected="${item.id === state.category}">
+              <b>${escapeHtml(item.label)}</b><span>${item.payloads.length}</span>
+            </button>`).join("")}
+        </div>
+
+        <div class="payload-list" role="listbox" aria-label="${escapeHtml(category.label)} payloads">
+          <p class="payload-summary">${escapeHtml(category.summary)}</p>
+          ${category.payloads.map((item, index) => {
+            const selected = !state.edited && index === state.payloadIndex;
+            return `<button type="button" class="payload-item${selected ? " active" : ""}"
+              data-payload-index="${index}" role="option" aria-selected="${selected}">
+              <b>${escapeHtml(item.name)}</b>
+              <code>${escapeHtml(item.value.length > 96 ? `${item.value.slice(0, 96)}…` : item.value)}</code>
+              <small>${escapeHtml(item.note)}</small>
+            </button>`;
+          }).join("")}
+        </div>
+      </div>
+    </section>
+
+    <section class="content-card">
+      <div class="card-heading">
+        <h3>SOURCE${state.edited ? " · CUSTOM" : ""}</h3>
+        <span>${state.source.length.toLocaleString()} characters</span>
+      </div>
+      <p>
+        Editable. Escapes <code>\\xNN</code>, <code>\\n</code>, <code>\\r</code> and <code>\\t</code>
+        are expanded before encoding.
+      </p>
+      <textarea id="injSource" class="injector-source" spellcheck="false" rows="4"
+        placeholder="Type or paste a payload…">${escapeHtml(state.source)}</textarea>
+      <div class="injector-source-actions">
+        <button data-action="inject-reset"${state.edited ? "" : " disabled"}>Reset to library entry</button>
+        <button data-action="inject-clear">Clear</button>
+      </div>
+    </section>
+
+    <section class="content-card">
+      <div class="card-heading"><h3>DELIVERY</h3></div>
       <div class="injector-grid">
-        <label>Category
-          <select id="injCategory">
-            ${PAYLOAD_CATEGORIES.map((item) =>
-              `<option value="${item.id}"${item.id === state.category ? " selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
-          </select>
-        </label>
-        <label>Payload
-          <select id="injPayload">
-            ${category.payloads.map((item, index) =>
-              `<option value="${index}"${index === state.payloadIndex ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}
-          </select>
-        </label>
         <label>Encoding
           <select id="injEncoding">
             ${ENCODINGS.map((item) =>
@@ -111,31 +159,17 @@ export function renderInjectorView(input: InjectorRenderInput): string {
         <label>Repeat
           <input id="injRepeat" type="number" min="1" max="4096" value="${state.repeat}">
         </label>
+        ${usesPlaceholders ? `
+        <label>LISTENER_HOST<input id="injHost" value="${escapeHtml(state.host)}" spellcheck="false"></label>
+        <label>LISTENER_PORT<input id="injPort" value="${escapeHtml(state.port)}" spellcheck="false"></label>` : ""}
       </div>
 
-      <p class="injector-note">${escapeHtml(category.summary)}</p>
-
       <div class="injector-detail">
-        <div><span>Probes for</span><b>${escapeHtml(payload.note)}</b></div>
         <div><span>Position</span><b>${escapeHtml(mode.note)}</b></div>
         <div><span>Encoding</span><b>${escapeHtml(ENCODINGS.find((item) => item.id === state.encoding)?.note ?? "")}</b></div>
       </div>
 
-      ${category.id === "shell" ? `
-      <div class="injector-grid injector-placeholders">
-        <label>LISTENER_HOST<input id="injHost" value="${escapeHtml(state.host)}" spellcheck="false"></label>
-        <label>LISTENER_PORT<input id="injPort" value="${escapeHtml(state.port)}" spellcheck="false"></label>
-      </div>` : ""}
-
       <label class="checkbox-label"><input type="checkbox" id="injNull"${state.nullTerminate ? " checked" : ""}>Append a null terminator</label>
-    </section>
-
-    <section class="content-card">
-      <div class="card-heading">
-        <h3>SOURCE</h3>
-        <span>${payload.value.length.toLocaleString()} characters</span>
-      </div>
-      <pre class="injector-source">${escapeHtml(payload.value)}</pre>
     </section>
 
     <section class="content-card">

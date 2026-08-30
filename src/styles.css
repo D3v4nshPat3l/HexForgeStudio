@@ -1837,3 +1837,102 @@ body.panel-open { overflow: hidden; }
   border-left: 3px solid var(--amber);
 }
 .injector-scope b { color: var(--amber); }
+
+/* ============================================================================
+   Payload browser
+   ----------------------------------------------------------------------------
+   Categories on the left, every payload in the selected category listed on the
+   right. A dropdown showed one entry at a time, which made the library feel like
+   it held a single payload.
+   ========================================================================== */
+
+.payload-browser {
+  display: grid;
+  grid-template-columns: minmax(150px, 210px) minmax(0, 1fr);
+  gap: calc(var(--u) * 2.5);
+  margin-top: calc(var(--u) * 3);
+}
+
+.payload-categories {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: calc(var(--u) * 1);
+}
+.payload-cat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 1.5);
+  width: 100%;
+  padding: calc(var(--u) * 1.8) calc(var(--u) * 2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.payload-cat b { font-size: var(--fs-nano); font-weight: 500; color: var(--muted); }
+.payload-cat span {
+  flex: 0 0 auto;
+  padding: 0 calc(var(--u) * 1.2);
+  border-radius: 999px;
+  background: var(--panel-3);
+  color: var(--dim);
+  font: var(--fs-nano) var(--mono);
+}
+.payload-cat:hover { background: var(--panel-2); }
+.payload-cat:hover b { color: var(--text); }
+.payload-cat.active { background: var(--accent-wash); border-color: var(--accent-line); }
+.payload-cat.active b { color: var(--accent-2); font-weight: 600; }
+.payload-cat.active span { background: var(--accent-2); color: var(--on-accent); }
+
+.payload-list {
+  display: grid;
+  align-content: start;
+  gap: calc(var(--u) * 1.2);
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: calc(var(--u) * 1);
+}
+.payload-summary { margin: 0 0 calc(var(--u) * 1); font-size: var(--fs-nano); color: var(--faint); }
+
+.payload-item {
+  display: grid;
+  gap: calc(var(--u) * 0.8);
+  width: 100%;
+  padding: calc(var(--u) * 2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  text-align: left;
+  cursor: pointer;
+}
+.payload-item:hover { border-color: var(--accent-line); background: var(--panel-3); }
+.payload-item.active { border-color: var(--accent-2); background: var(--accent-wash); }
+.payload-item b { font-size: var(--fs-nano); font-weight: 600; color: var(--text-strong); }
+.payload-item code {
+  font: var(--fs-nano) var(--mono);
+  color: var(--accent-2);
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.payload-item small { font-size: var(--fs-nano); color: var(--faint); line-height: 1.5; }
+
+/* The source box is a real editor, not a preview. */
+textarea.injector-source {
+  width: 100%;
+  min-height: calc(var(--u) * 18);
+  resize: vertical;
+  font: var(--fs-nano) / 1.6 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.injector-source-actions { display: flex; gap: calc(var(--u) * 2); margin-top: calc(var(--u) * 2); }
+
+@media (max-width: 1100px) {
+  .payload-browser { grid-template-columns: 1fr; }
+  .payload-categories { grid-auto-flow: column; grid-auto-columns: max-content; max-height: none; overflow-x: auto; }
+}

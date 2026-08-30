@@ -1,7 +1,7 @@
 import { BRAND_MARK } from "./brand";
 import { renderByteForge } from "./ui/byte-forge";
 import { hoverButtonLayers } from "./ui/forge-button";
-import { DEFAULT_INJECTOR_STATE, renderInjectorView, type InjectorState } from "./ui/injector";
+import { DEFAULT_INJECTOR_STATE, lookupPayload, renderInjectorView, type InjectorState } from "./ui/injector";
 import { PAYLOAD_CATEGORIES, encodePayload, type EncodingId, type PayloadCategoryId } from "./analyzers/payloads";
 import { FileByteSource } from "./byte-source";
 import { HexWorkerClient } from "./worker-client";
@@ -1700,6 +1700,24 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  const categoryPick = target.closest<HTMLElement>("[data-payload-category]")?.dataset.payloadCategory;
+  if (categoryPick) {
+    injector.category = categoryPick as PayloadCategoryId;
+    injector.payloadIndex = 0;
+    injector.source = lookupPayload(injector.category, 0);
+    injector.edited = false;
+    renderInjectorPanel();
+    return;
+  }
+  const payloadPick = target.closest<HTMLElement>("[data-payload-index]")?.dataset.payloadIndex;
+  if (payloadPick !== undefined) {
+    injector.payloadIndex = Number(payloadPick) || 0;
+    injector.source = lookupPayload(injector.category, injector.payloadIndex);
+    injector.edited = false;
+    renderInjectorPanel();
+    return;
+  }
+
   const byteOffset = target.closest<HTMLElement>("[data-byte-offset]")?.dataset.byteOffset;
   if (byteOffset !== undefined) { setCursor(Number(byteOffset), (event as MouseEvent).shiftKey, false); return; }
   const jump = target.closest<HTMLElement>("[data-jump]")?.dataset.jump;
@@ -1739,6 +1757,8 @@ app.addEventListener("click", (event) => {
   else if (action === "copy-text") void copySelection(true);
   else if (action === "save-selection") void exportSelection();
   else if (action === "select-all" && tab?.file.size) { tab.selectionStart = 0; tab.selectionEnd = tab.file.size - 1; tab.cursor = 0; tab.page = 0; updateAll(); }
+  else if (action === "inject-reset") { injector.source = lookupPayload(injector.category, injector.payloadIndex); injector.edited = false; renderInjectorPanel(); }
+  else if (action === "inject-clear") { injector.source = ""; injector.edited = true; renderInjectorPanel(); }
   else if (action === "inject-apply") void applyInjection().catch((error) => toast(error instanceof Error ? error.message : String(error), "error"));
   else if (action === "inject-copy") {
     const bytes = buildInjectionBytes();
@@ -1768,6 +1788,13 @@ app.addEventListener("click", (event) => {
 });
 
 app.addEventListener("input", (event) => {
+  const typed = event.target as HTMLElement;
+  if (typed.id === "injSource") {
+    injector.source = (typed as HTMLTextAreaElement).value;
+    injector.edited = injector.source !== lookupPayload(injector.category, injector.payloadIndex);
+    refreshInjectorPreview();
+    return;
+  }
   const target = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
   if (["baseValue", "baseFrom", "baseTo"].includes(target.id)) updateBaseConverter();
   if (target.id === "stringFilter") {
@@ -1798,11 +1825,10 @@ app.addEventListener("change", (event) => {
     }
     return;
   }
-  if (target.id === "injCategory") { injector.category = target.value as PayloadCategoryId; injector.payloadIndex = 0; renderInjectorPanel(); return; }
-  if (target.id === "injPayload") { injector.payloadIndex = Number(target.value) || 0; renderInjectorPanel(); return; }
   if (target.id === "injEncoding") { injector.encoding = target.value as EncodingId; renderInjectorPanel(); return; }
   if (target.id === "injMode") { injector.mode = target.value as InjectorState["mode"]; renderInjectorPanel(); return; }
   if (target.id === "injOffset") { injector.offsetText = target.value; return; }
+  if (target.id === "injSource") { injector.source = target.value; injector.edited = target.value !== lookupPayload(injector.category, injector.payloadIndex); renderInjectorPanel(); return; }
   if (target.id === "injRepeat") { injector.repeat = Math.max(1, Math.min(4096, Number(target.value) || 1)); renderInjectorPanel(); return; }
   if (target.id === "injHost") { injector.host = target.value; renderInjectorPanel(); return; }
   if (target.id === "injPort") { injector.port = target.value; renderInjectorPanel(); return; }
@@ -2089,12 +2115,11 @@ function invalidateReadCache(tab: EditorTab): void {
  * inside an encoded blob.
  */
 function buildInjectionBytes(): Uint8Array {
-  const category = PAYLOAD_CATEGORIES.find((item) => item.id === injector.category) ?? PAYLOAD_CATEGORIES[0]!;
-  const payload = category.payloads[Math.min(injector.payloadIndex, category.payloads.length - 1)]
-    ?? category.payloads[0]!;
-
-  let text = payload.value;
-  if (category.id === "shell") {
+  // Whatever is in the source box is the payload, whether it came from the library or
+  // was typed. Placeholders are substituted regardless of category, so a custom payload
+  // can use them too.
+  let text = injector.source;
+  if (/LISTENER_HOST|LISTENER_PORT/.test(text)) {
     text = text.replace(/LISTENER_HOST/g, injector.host || "127.0.0.1")
                .replace(/LISTENER_PORT/g, injector.port || "4444");
   }
@@ -2173,4 +2198,38 @@ function parseOffsetInput(text: string): number | null {
   if (/^0x[0-9a-f]+$/i.test(trimmed)) return Number.parseInt(trimmed.slice(2), 16);
   if (/^[0-9]+$/.test(trimmed)) return Number.parseInt(trimmed, 10);
   return null;
+}
+
+
+/**
+ * Updates only the byte preview and its counts.
+ *
+ * Typing in the source box must not re-render the panel: replacing the textarea would
+ * drop the caret and the current selection on every keystroke.
+ */
+function refreshInjectorPreview(): void {
+  const bytes = buildInjectionBytes();
+  const previews = document.querySelectorAll<HTMLElement>(".injector-preview");
+  const hexTarget = previews[0];
+  const textTarget = previews[1];
+  if (hexTarget) {
+    hexTarget.textContent = [...bytes.slice(0, 512)]
+      .map((byte) => byte.toString(16).padStart(2, "0").toUpperCase()).join(" ") || "—";
+  }
+  if (textTarget) {
+    textTarget.textContent = [...bytes.slice(0, 512)]
+      .map((byte) => (byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : ".")).join("") || "—";
+  }
+  const counter = hexTarget?.closest(".content-card")?.querySelector(".card-heading span");
+  if (counter) counter.textContent = `${bytes.length.toLocaleString()} bytes${bytes.length > 512 ? " · first 512 shown" : ""}`;
+
+  // The source card's own heading, counter and reset button also reflect edit state,
+  // and this path deliberately skips the full re-render, so they are updated here.
+  const sourceCard = document.querySelector<HTMLElement>("#injSource")?.closest(".content-card");
+  const heading = sourceCard?.querySelector("h3");
+  if (heading) heading.textContent = injector.edited ? "SOURCE · CUSTOM" : "SOURCE";
+  const sourceCount = sourceCard?.querySelector(".card-heading span");
+  if (sourceCount) sourceCount.textContent = `${injector.source.length.toLocaleString()} characters`;
+  const reset = sourceCard?.querySelector<HTMLButtonElement>("[data-action='inject-reset']");
+  if (reset) reset.disabled = !injector.edited;
 }
