@@ -83,6 +83,9 @@ const MAX_REPLACE_RESULTS = 25_000;
  * previously hard-coded at 28px; once the type scale grew, every row was positioned
  * against a stale height and the grid drifted out of alignment as you scrolled.
  */
+/** Collapses both side rails so the byte grid takes the full window width. */
+let wideView = false;
+
 let hexRowHeightCache = 0;
 function hexRowHeight(): number {
   if (hexRowHeightCache > 0) return hexRowHeightCache;
@@ -554,6 +557,7 @@ function setCursor(offset: number, extendSelection = false, reveal = true): void
 }
 
 function updateAll(): void {
+  document.querySelector(".studio-shell")?.classList.toggle("wide-view", wideView);
   void refreshForgePanel(activeTab() ?? null);
   renderWorkspaceTabs();
   renderFileNavigator();
@@ -926,7 +930,7 @@ function renderHexView(): void {
     return;
   }
   viewContent.innerHTML = `<div class="hex-view">
-    <div class="hex-options"><div class="segmented"><button data-input-mode="hex" class="${tab.inputMode === "hex" ? "active" : ""}">HEX</button><button data-input-mode="text" class="${tab.inputMode === "text" ? "active" : ""}">TEXT</button></div><label>Bytes / row<select id="bytesPerRowSelect"><option ${bytesPerRow === 8 ? "selected" : ""}>8</option><option ${bytesPerRow === 16 ? "selected" : ""}>16</option><option ${bytesPerRow === 24 ? "selected" : ""}>24</option><option ${bytesPerRow === 32 ? "selected" : ""}>32</option></select></label><label>Character view<select id="characterModeSelect"><option value="windows-1252" ${characterMode === "windows-1252" ? "selected" : ""}>Windows-1252</option><option value="ascii" ${characterMode === "ascii" ? "selected" : ""}>ASCII</option><option value="latin1" ${characterMode === "latin1" ? "selected" : ""}>Latin-1</option></select></label><span>Select a byte to edit its bits in the right panel.</span></div>
+    <div class="hex-options"><div class="segmented"><button data-input-mode="hex" class="${tab.inputMode === "hex" ? "active" : ""}">HEX</button><button data-input-mode="text" class="${tab.inputMode === "text" ? "active" : ""}">TEXT</button></div><label>Bytes / row<select id="bytesPerRowSelect"><option ${bytesPerRow === 8 ? "selected" : ""}>8</option><option ${bytesPerRow === 16 ? "selected" : ""}>16</option><option ${bytesPerRow === 24 ? "selected" : ""}>24</option><option ${bytesPerRow === 32 ? "selected" : ""}>32</option></select></label><label>Character view<select id="characterModeSelect"><option value="windows-1252" ${characterMode === "windows-1252" ? "selected" : ""}>Windows-1252</option><option value="ascii" ${characterMode === "ascii" ? "selected" : ""}>ASCII</option><option value="latin1" ${characterMode === "latin1" ? "selected" : ""}>Latin-1</option></select></label><button type="button" class="wide-toggle" data-action="toggle-wide" title="Hide the side panels and give the grid the full window (W)">${wideView ? "Exit wide view" : "Wide view"}</button><span>Select a byte to edit its bits in the right panel.</span></div>
     <div class="hex-header-viewport" id="hexHeaderViewport"><div class="hex-column-header" style="--row-bytes:${bytesPerRow};min-width:${hexContentWidth()}px"><span class="offset-head">OFFSET</span><div style="--row-bytes:${bytesPerRow}">${headerBytes}</div><span class="ascii-head">TEXT (${characterMode === "windows-1252" ? "CP1252" : characterMode.toUpperCase()})</span></div></div>
     <div class="hex-top-scroll" id="hexTopScroll" title="Horizontal scrollbar"><div id="hexTopSpacer" style="width:${hexContentWidth()}px"></div></div>
     <div class="hex-grid" id="hexGrid" tabindex="0" aria-label="Hex data, continuously scrollable"><div class="hex-virtual-spacer" id="hexVirtualSpacer"></div><div class="hex-rows" id="hexRows"></div></div>
@@ -1645,6 +1649,14 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  if (target.closest("[data-action='toggle-wide']")) {
+    wideView = !wideView;
+    updateAll();
+    // Row geometry depends on the grid width, so re-measure after the layout settles.
+    window.requestAnimationFrame(() => { hexRowHeightCache = 0; renderHexView(); });
+    return;
+  }
+
   const byteOffset = target.closest<HTMLElement>("[data-byte-offset]")?.dataset.byteOffset;
   if (byteOffset !== undefined) { setCursor(Number(byteOffset), (event as MouseEvent).shiftKey, false); return; }
   const jump = target.closest<HTMLElement>("[data-jump]")?.dataset.jump;
@@ -1781,6 +1793,15 @@ app.addEventListener("keydown", (event) => {
   if (event.key in moves) { event.preventDefault(); tab.nibble = 0; setCursor(tab.cursor + (moves[event.key] ?? 0), event.shiftKey); return; }
   if (event.key === "Home") { event.preventDefault(); tab.nibble = 0; setCursor(event.ctrlKey ? 0 : rowStart, event.shiftKey); return; }
   if (event.key === "End") { event.preventDefault(); tab.nibble = 0; setCursor(event.ctrlKey ? tab.file.size - 1 : Math.min(tab.file.size - 1, rowStart + bytesPerRow - 1), event.shiftKey); return; }
+  if (event.key === "w" || event.key === "W") {
+    if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      wideView = !wideView;
+      updateAll();
+      window.requestAnimationFrame(() => { hexRowHeightCache = 0; renderHexView(); });
+      return;
+    }
+  }
   if (event.key === "Tab") { event.preventDefault(); tab.nibble = 0; tab.inputMode = tab.inputMode === "hex" ? "text" : "hex"; updateAll(); return; }
   if (event.key === "Escape") { tab.nibble = 0; void repaintByte(tab, tab.cursor); return; }
 
