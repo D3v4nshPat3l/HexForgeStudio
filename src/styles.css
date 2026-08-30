@@ -403,12 +403,12 @@ body.app-mode, html:has(body.app-mode), body.app-mode #app { height: 100%; overf
   align-self: center;
   height: calc(100% - var(--u) * 4);
   border-radius: var(--radius);
-  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   border-bottom: 0;
   box-shadow: 0 calc(var(--u) * 0.6) calc(var(--u) * 2.4) rgba(63, 185, 80, 0.28);
 }
-.command-bar button.primary .hb-icon { color: #fff; }
+.command-bar button.primary .hb-icon { color: var(--on-accent); }
 .command-bar button.primary:hover { filter: brightness(1.12); }
 .command-bar button:disabled { color: var(--dim); cursor: default; }
 .command-bar button:disabled .hb-icon { color: var(--dim); }
@@ -590,11 +590,21 @@ button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { color: var(--dim); background: var(--panel-2); border-color: var(--line-soft); cursor: default; }
 
 button.primary {
-  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
-  border-color: var(--accent-deep);
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
-button.primary:hover:not(:disabled) { filter: brightness(1.12); color: #fff; }
+/*
+ * The background must be restated here. `button:hover:not(:disabled)` above is more
+ * specific than `button.primary`, so without this the fill reverted to the panel
+ * colour on hover while the foreground stayed light -- in the light theme that left
+ * near-white text on a near-white button.
+ */
+button.primary:hover:not(:disabled) {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  color: var(--on-accent);
+}
 button.danger { border-color: var(--danger); color: var(--danger); background: var(--danger-wash); }
 button.wide { width: 100%; }
 button.subtle {
@@ -1587,7 +1597,7 @@ body.panel-open { overflow: hidden; }
 
 /* The primary action already sits on the accent, so its flood is the darker shade. */
 .command-bar button.primary .hb-dot { background: var(--accent-deep); }
-.command-bar button.primary:hover:not(:disabled) .hb-hover { color: #fff; }
+.command-bar button.primary:hover:not(:disabled) .hb-hover { color: var(--on-accent); }
 
 .hb:disabled .hb-dot, .hb:disabled .hb-hover { display: none; }
 
@@ -1764,3 +1774,66 @@ body.panel-open { overflow: hidden; }
   border: 0;
   visibility: hidden;
 }
+
+/* ============================================================================
+   Payload injector
+   ========================================================================== */
+
+.injector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: calc(var(--u) * 2.5);
+  margin: calc(var(--u) * 3) 0;
+}
+.injector-grid label { display: grid; gap: calc(var(--u) * 1); font-size: var(--fs-nano); color: var(--muted); }
+.injector-placeholders { margin-top: calc(var(--u) * 2); }
+
+.injector-note { margin: 0 0 calc(var(--u) * 2); font-size: var(--fs-nano); color: var(--faint); }
+
+.injector-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 2.5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-3);
+}
+.injector-detail > div { display: grid; gap: 2px; min-width: 0; }
+.injector-detail span { font-size: var(--fs-nano); letter-spacing: 0.06em; color: var(--dim); }
+.injector-detail b { font-size: var(--fs-nano); font-weight: 500; color: var(--text); line-height: 1.5; }
+
+.injector-source,
+.injector-preview {
+  margin: 0 0 calc(var(--u) * 2);
+  padding: calc(var(--u) * 2.5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-grid);
+  color: var(--text);
+  font: var(--fs-nano) / 1.6 var(--mono);
+  /* Payloads are long single lines; wrap rather than forcing a horizontal scroll. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.injector-preview:last-of-type { color: var(--muted); }
+
+.injector-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 3);
+  flex-wrap: wrap;
+}
+.injector-actions > span { font-size: var(--fs-nano); color: var(--faint); }
+.injector-actions > div { display: flex; gap: calc(var(--u) * 2); }
+
+.injector-scope {
+  font-size: var(--fs-nano);
+  line-height: 1.65;
+  color: var(--muted);
+  border-left: 3px solid var(--amber);
+}
+.injector-scope b { color: var(--amber); }

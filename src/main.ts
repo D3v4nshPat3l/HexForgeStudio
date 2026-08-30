@@ -1,6 +1,8 @@
 import { BRAND_MARK } from "./brand";
 import { renderByteForge } from "./ui/byte-forge";
 import { hoverButtonLayers } from "./ui/forge-button";
+import { DEFAULT_INJECTOR_STATE, renderInjectorView, type InjectorState } from "./ui/injector";
+import { PAYLOAD_CATEGORIES, encodePayload, type EncodingId, type PayloadCategoryId } from "./analyzers/payloads";
 import { FileByteSource } from "./byte-source";
 import { HexWorkerClient } from "./worker-client";
 import { buildPdfReport, savePdfReport } from "./report/pdf-report";
@@ -13,7 +15,7 @@ import { summarizeCapabilities } from "./analyzers/capabilities";
 import { applyTheme, resolveInitialTheme, toggleTheme, type ThemeName } from "./theme";
 import type { DifferenceRange, FileAnalysis, IocType, ProgressEvent, SearchQuery, SearchResult, Severity, ThreatFinding } from "./types";
 
-type MainView = "hex" | "signature" | "intel" | "forensics" | "comparison" | "preview" | "report";
+type MainView = "hex" | "signature" | "intel" | "forensics" | "comparison" | "preview" | "injector" | "report";
 type InputMode = "hex" | "text";
 
 interface PatchHistoryEntry {
@@ -96,6 +98,9 @@ const MAX_REPLACE_RESULTS = 25_000;
 /** Collapses both side rails so the byte grid takes the full window width. */
 let wideView = false;
 
+/** Payload injector selections, kept across view switches. */
+let injector: InjectorState = { ...DEFAULT_INJECTOR_STATE };
+
 let hexRowHeightCache = 0;
 function hexRowHeight(): number {
   if (hexRowHeightCache > 0) return hexRowHeightCache;
@@ -166,6 +171,7 @@ const SHELL_HTML = `
       <button class="view-tab" data-view="forensics">${hoverButtonLayers("Forensics Lab")}</button>
       <button class="view-tab" data-view="comparison">${hoverButtonLayers("File Comparison")}</button>
       <button class="view-tab" data-view="preview">${hoverButtonLayers("PE / Preview")}</button>
+      <button class="view-tab" data-view="injector">${hoverButtonLayers("Injector")}</button>
       <button class="view-tab" data-view="report">${hoverButtonLayers("PDF Report")}</button>
     </div>
   </nav>
@@ -689,6 +695,7 @@ function renderActiveView(): void {
   else if (activeView === "forensics") renderForensicsView();
   else if (activeView === "comparison") renderComparisonView();
   else if (activeView === "preview") renderPreviewView();
+  else if (activeView === "injector") renderInjectorPanel();
   else renderReportView();
 }
 
@@ -1732,6 +1739,14 @@ app.addEventListener("click", (event) => {
   else if (action === "copy-text") void copySelection(true);
   else if (action === "save-selection") void exportSelection();
   else if (action === "select-all" && tab?.file.size) { tab.selectionStart = 0; tab.selectionEnd = tab.file.size - 1; tab.cursor = 0; tab.page = 0; updateAll(); }
+  else if (action === "inject-apply") void applyInjection().catch((error) => toast(error instanceof Error ? error.message : String(error), "error"));
+  else if (action === "inject-copy") {
+    const bytes = buildInjectionBytes();
+    const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0").toUpperCase()).join(" ");
+    void navigator.clipboard.writeText(hex)
+      .then(() => toast(`Copied ${bytes.length.toLocaleString()} bytes as hex.`, "success"))
+      .catch(() => toast("Clipboard write was refused by the browser.", "error"));
+  }
   else if (action === "fill-00") void bulkSelectionOperation("fill00");
   else if (action === "fill-ff") void bulkSelectionOperation("fillff");
   else if (action === "invert") void bulkSelectionOperation("invert");
@@ -1783,6 +1798,15 @@ app.addEventListener("change", (event) => {
     }
     return;
   }
+  if (target.id === "injCategory") { injector.category = target.value as PayloadCategoryId; injector.payloadIndex = 0; renderInjectorPanel(); return; }
+  if (target.id === "injPayload") { injector.payloadIndex = Number(target.value) || 0; renderInjectorPanel(); return; }
+  if (target.id === "injEncoding") { injector.encoding = target.value as EncodingId; renderInjectorPanel(); return; }
+  if (target.id === "injMode") { injector.mode = target.value as InjectorState["mode"]; renderInjectorPanel(); return; }
+  if (target.id === "injOffset") { injector.offsetText = target.value; return; }
+  if (target.id === "injRepeat") { injector.repeat = Math.max(1, Math.min(4096, Number(target.value) || 1)); renderInjectorPanel(); return; }
+  if (target.id === "injHost") { injector.host = target.value; renderInjectorPanel(); return; }
+  if (target.id === "injPort") { injector.port = target.value; renderInjectorPanel(); return; }
+  if (target.id === "injNull") { injector.nullTerminate = (target as HTMLInputElement).checked; renderInjectorPanel(); return; }
   if (target.id === "byteHexInput") {
     const tabNow = activeTab();
     const text = target.value.trim();
@@ -2054,4 +2078,99 @@ function applyPatchOverlay(tab: EditorTab, view: Uint8Array, offset: number): vo
 /** Drops the cache when the underlying bytes change. */
 function invalidateReadCache(tab: EditorTab): void {
   tab.readCache = undefined;
+}
+
+
+/**
+ * Builds the exact bytes an injection would write.
+ *
+ * Placeholder substitution happens before encoding, so a host or port typed by the
+ * user is encoded along with the rest of the payload rather than left as literal text
+ * inside an encoded blob.
+ */
+function buildInjectionBytes(): Uint8Array {
+  const category = PAYLOAD_CATEGORIES.find((item) => item.id === injector.category) ?? PAYLOAD_CATEGORIES[0]!;
+  const payload = category.payloads[Math.min(injector.payloadIndex, category.payloads.length - 1)]
+    ?? category.payloads[0]!;
+
+  let text = payload.value;
+  if (category.id === "shell") {
+    text = text.replace(/LISTENER_HOST/g, injector.host || "127.0.0.1")
+               .replace(/LISTENER_PORT/g, injector.port || "4444");
+  }
+
+  const once = encodePayload(text, injector.encoding);
+  const repeat = Math.max(1, Math.min(4096, injector.repeat || 1));
+  const terminator = injector.nullTerminate ? 1 : 0;
+
+  const out = new Uint8Array(once.length * repeat + terminator);
+  for (let i = 0; i < repeat; i += 1) out.set(once, i * once.length);
+  return out;
+}
+
+function renderInjectorPanel(): void {
+  const tab = activeTab();
+  const selection = tab ? selectionBounds(tab) : null;
+  viewContent.innerHTML = renderInjectorView({
+    state: injector,
+    hasFile: Boolean(tab && tab.file.size >= 0),
+    cursor: tab?.cursor ?? 0,
+    selectionLength: selection?.length ?? 0,
+    fileSize: tab?.file.size ?? 0,
+    preview: buildInjectionBytes()
+  });
+}
+
+/** Applies the current injection to the open buffer. */
+async function applyInjection(): Promise<void> {
+  const tab = activeTab();
+  if (!tab) { toast("Open a file before injecting.", "error"); return; }
+
+  const bytes = buildInjectionBytes();
+  if (bytes.length === 0) { toast("Nothing to inject.", "error"); return; }
+
+  const selection = selectionBounds(tab);
+
+  if (injector.mode === "overwrite-cursor" || injector.mode === "overwrite-selection") {
+    const start = injector.mode === "overwrite-selection" && selection ? selection.start : tab.cursor;
+    const room = tab.file.size - start;
+    if (room <= 0) { toast("Cursor is at the end of the file; use insert or append.", "error"); return; }
+    // Overwrite never grows the file, so a payload longer than the space available is
+    // truncated rather than silently spilling past the end.
+    const writable = bytes.slice(0, room);
+    setBytes(tab, start, writable, "Inject payload");
+    invalidateReadCache(tab);
+    toast(writable.length < bytes.length
+      ? `Injected ${writable.length.toLocaleString()} of ${bytes.length.toLocaleString()} bytes; truncated at end of file.`
+      : `Injected ${writable.length.toLocaleString()} bytes at ${formatOffset(start)}.`,
+      writable.length < bytes.length ? "error" : "success");
+    return;
+  }
+
+  // The remaining modes change file size, so they rebuild the buffer.
+  let at: number;
+  if (injector.mode === "append") at = tab.file.size;
+  else if (injector.mode === "offset") {
+    const parsed = parseOffsetInput(injector.offsetText);
+    if (parsed === null) { toast("Offset must be decimal or 0x-prefixed hexadecimal.", "error"); return; }
+    if (parsed < 0 || parsed > tab.file.size) { toast(`Offset must be between 0 and ${tab.file.size.toLocaleString()}.`, "error"); return; }
+    at = parsed;
+  } else at = tab.file.size === 0 ? 0 : tab.cursor;
+
+  const current = patchedBlob(tab);
+  const after = new File(
+    [current.slice(0, at), new Blob([bytes.slice().buffer as ArrayBuffer]), current.slice(at)],
+    tab.file.name,
+    { type: tab.file.type, lastModified: Date.now() }
+  );
+  replaceTabFile(tab, after, "Inject payload");
+  toast(`Inserted ${bytes.length.toLocaleString()} bytes at ${formatOffset(at)}.`, "success");
+}
+
+/** Accepts 0x-prefixed hex or plain decimal. */
+function parseOffsetInput(text: string): number | null {
+  const trimmed = text.trim();
+  if (/^0x[0-9a-f]+$/i.test(trimmed)) return Number.parseInt(trimmed.slice(2), 16);
+  if (/^[0-9]+$/.test(trimmed)) return Number.parseInt(trimmed, 10);
+  return null;
 }
