@@ -83,9 +83,6 @@ const MAX_REPLACE_RESULTS = 25_000;
  * previously hard-coded at 28px; once the type scale grew, every row was positioned
  * against a stale height and the grid drifted out of alignment as you scrolled.
  */
-/** Whether the inline byte editor is expanded under the cursor row. */
-let forgeOpen = true;
-
 let hexRowHeightCache = 0;
 function hexRowHeight(): number {
   if (hexRowHeightCache > 0) return hexRowHeightCache;
@@ -108,7 +105,7 @@ const logoSvg = BRAND_MARK;
 const SHELL_HTML = `
 <div class="studio-shell">
   <header class="brand-header">
-    <div class="brand-lockup"><span class="brand-logo">${logoSvg}</span><div><h1>HexForge Studio Pro</h1><p>Auto Forensics · Extended Hex Editor & Signature Analyzer</p></div></div>
+    <div class="brand-lockup"><span class="brand-logo">${logoSvg}</span><div><h1>HexForge Studio</h1></div></div>
     <div class="active-file-heading"><strong id="activeFileHeading">No file loaded</strong><span id="activeFileSubheading">Open, drop, or create a binary file to begin</span></div>
     <div class="header-tools">
       <span id="riskBadgeSlot"></span>
@@ -189,8 +186,10 @@ const SHELL_HTML = `
 
     <aside class="right-rail">
       <div class="rail-scroll">
-        <h2>SELECTION</h2>
+        <h2>BYTE EDITOR</h2>
+        <section class="rail-section" id="byteForge"><p class="rail-empty">Select a byte in the editor.</p></section>
         <section class="rail-section compact-section">
+          <h3>SELECTION</h3>
           <dl id="selectionInfo"><div><dt>Start</dt><dd>—</dd></div><div><dt>End</dt><dd>—</dd></div><div><dt>Length</dt><dd class="mono">0</dd></div></dl>
         </section>
         <section class="rail-section">
@@ -555,6 +554,7 @@ function setCursor(offset: number, extendSelection = false, reveal = true): void
 }
 
 function updateAll(): void {
+  void refreshForgePanel(activeTab() ?? null);
   renderWorkspaceTabs();
   renderFileNavigator();
   renderSidebars();
@@ -926,7 +926,7 @@ function renderHexView(): void {
     return;
   }
   viewContent.innerHTML = `<div class="hex-view">
-    <div class="hex-options"><div class="segmented"><button data-input-mode="hex" class="${tab.inputMode === "hex" ? "active" : ""}">HEX</button><button data-input-mode="text" class="${tab.inputMode === "text" ? "active" : ""}">TEXT</button></div><label>Bytes / row<select id="bytesPerRowSelect"><option ${bytesPerRow === 8 ? "selected" : ""}>8</option><option ${bytesPerRow === 16 ? "selected" : ""}>16</option><option ${bytesPerRow === 24 ? "selected" : ""}>24</option><option ${bytesPerRow === 32 ? "selected" : ""}>32</option></select></label><label>Character view<select id="characterModeSelect"><option value="windows-1252" ${characterMode === "windows-1252" ? "selected" : ""}>Windows-1252</option><option value="ascii" ${characterMode === "ascii" ? "selected" : ""}>ASCII</option><option value="latin1" ${characterMode === "latin1" ? "selected" : ""}>Latin-1</option></select></label><label class="checkbox-label"><input type="checkbox" id="forgeToggle" ${forgeOpen ? "checked" : ""}>Inline bit editor</label><span>Select any byte to edit it in place — nibbles, bits, or hex.</span></div>
+    <div class="hex-options"><div class="segmented"><button data-input-mode="hex" class="${tab.inputMode === "hex" ? "active" : ""}">HEX</button><button data-input-mode="text" class="${tab.inputMode === "text" ? "active" : ""}">TEXT</button></div><label>Bytes / row<select id="bytesPerRowSelect"><option ${bytesPerRow === 8 ? "selected" : ""}>8</option><option ${bytesPerRow === 16 ? "selected" : ""}>16</option><option ${bytesPerRow === 24 ? "selected" : ""}>24</option><option ${bytesPerRow === 32 ? "selected" : ""}>32</option></select></label><label>Character view<select id="characterModeSelect"><option value="windows-1252" ${characterMode === "windows-1252" ? "selected" : ""}>Windows-1252</option><option value="ascii" ${characterMode === "ascii" ? "selected" : ""}>ASCII</option><option value="latin1" ${characterMode === "latin1" ? "selected" : ""}>Latin-1</option></select></label><span>Select a byte to edit its bits in the right panel.</span></div>
     <div class="hex-header-viewport" id="hexHeaderViewport"><div class="hex-column-header" style="--row-bytes:${bytesPerRow};min-width:${hexContentWidth()}px"><span class="offset-head">OFFSET</span><div style="--row-bytes:${bytesPerRow}">${headerBytes}</div><span class="ascii-head">TEXT (${characterMode === "windows-1252" ? "CP1252" : characterMode.toUpperCase()})</span></div></div>
     <div class="hex-top-scroll" id="hexTopScroll" title="Horizontal scrollbar"><div id="hexTopSpacer" style="width:${hexContentWidth()}px"></div></div>
     <div class="hex-grid" id="hexGrid" tabindex="0" aria-label="Hex data, continuously scrollable"><div class="hex-virtual-spacer" id="hexVirtualSpacer"></div><div class="hex-rows" id="hexRows"></div></div>
@@ -996,11 +996,6 @@ async function renderHexRows(tab: EditorTab): Promise<void> {
   const startOffset = startRow * bytesPerRow;
   const requested = Math.min(tab.file.size - startOffset, (endRow - startRow) * bytesPerRow);
   const bytes = requested > 0 ? await readRange(tab, startOffset, requested) : new Uint8Array();
-  // readRange overlays patches in place, so the pristine span is read separately. Only
-  // needed while the inline editor is open, which is why it is not fetched otherwise.
-  const originalBytes = forgeOpen && requested > 0
-    ? await tab.source.read(startOffset, Math.max(0, Math.min(requested, tab.file.size - startOffset)))
-    : bytes;
   if (generation !== renderGeneration || tab.id !== activeId || !rowsTarget.isConnected) return;
   const selection = selectionBounds(tab);
   const rows: string[] = [];
@@ -1029,19 +1024,6 @@ async function renderHexRows(tab: EditorTab): Promise<void> {
     const top = hexRowToTop(row, totalRows, virtualHeight);
     const holdsCursor = tab.cursor >= absoluteStart && tab.cursor < absoluteStart + bytesPerRow;
     rows.push(`<div class="hex-row${holdsCursor ? " has-cursor" : ""}" style="top:${top}px;min-width:${hexContentWidth()}px"><button class="row-offset" data-byte-offset="${absoluteStart}">${formatOffset(absoluteStart)}</button><div class="hex-cells" style="--row-bytes:${bytesPerRow}">${hexCells.join("")}</div><div class="ascii-cells" style="--row-bytes:${bytesPerRow}">${asciiCells.join("")}</div></div>`);
-
-    // The inline editor is absolutely positioned like the rows themselves, immediately
-    // below the row that owns the cursor, so it travels with the byte being edited.
-    if (holdsCursor && forgeOpen && tab.file.size > 0) {
-      const cursorValue = tab.patches.get(tab.cursor) ?? bytes[tab.cursor - startOffset] ?? 0;
-      const originalValue = originalBytes[tab.cursor - startOffset] ?? cursorValue;
-      rows.push(`<div class="forge-slot" style="top:${top + hexRowHeight()}px">${renderByteForge({
-        offset: tab.cursor,
-        value: cursorValue,
-        original: originalValue,
-        pendingNibble: tab.nibble === 1
-      })}</div>`);
-    }
   }
   rowsTarget.innerHTML = rows.join("");
   updateContinuousPageIndicator(tab, centerRow);
@@ -1753,7 +1735,13 @@ app.addEventListener("change", (event) => {
     }
     return;
   }
-  if (target.id === "forgeToggle") { forgeOpen = (target as HTMLInputElement).checked; renderHexView(); return; }
+  if (target.id === "byteHexInput") {
+    const tabNow = activeTab();
+    const text = target.value.trim();
+    if (tabNow && /^[0-9a-f]{1,2}$/i.test(text)) void writeForgeByte(tabNow, () => Number.parseInt(text, 16), "Edit byte");
+    else void refreshForgePanel(tabNow ?? null);
+    return;
+  }
   if (target.id === "characterModeSelect") { characterMode = target.value as typeof characterMode; renderHexView(); return; }
   if (target.matches("[data-bit]") && tab) {
     const bit = Number((target as HTMLInputElement).dataset.bit);
@@ -1933,7 +1921,7 @@ async function writeForgeByte(tab: EditorTab, transform: (current: number) => nu
   recordPatch(tab, label, [{ offset, before, after: next }]);
   tab.nibble = 0;
   await repaintByte(tab, offset);
-  refreshForgePanel(tab, next);
+  void refreshForgePanel(tab);
   updateStatusOnly();
 }
 
@@ -1946,17 +1934,24 @@ async function revertForgeByte(tab: EditorTab): Promise<void> {
   tab.patches.delete(offset);
   recordPatch(tab, "Revert byte", [{ offset, before, after: null }]);
   await repaintByte(tab, offset);
-  refreshForgePanel(tab, original);
+  void refreshForgePanel(tab);
   updateStatusOnly();
 }
 
-/** Repaints the inline editor without touching the surrounding grid. */
-function refreshForgePanel(tab: EditorTab, value: number): void {
-  const slot = document.querySelector<HTMLElement>(".forge-slot");
-  if (!slot) return;
-  const originalAttr = slot.querySelector<HTMLElement>(".byte-forge")?.dataset.forgeOriginal;
-  void (async () => {
-    const original = originalAttr !== undefined ? Number(originalAttr) : (await tab.source.read(tab.cursor, 1))[0] ?? value;
-    slot.innerHTML = renderByteForge({ offset: tab.cursor, value, original, pendingNibble: tab.nibble === 1 });
-  })();
+/**
+ * Renders the rail byte editor for the current cursor.
+ *
+ * Called whenever the cursor or the byte under it changes. It never touches the grid,
+ * so editing from the rail cannot disturb scroll position or selection.
+ */
+async function refreshForgePanel(tab: EditorTab | null): Promise<void> {
+  const host = document.querySelector<HTMLElement>("#byteForge");
+  if (!host) return;
+  if (!tab || tab.file.size === 0) { host.innerHTML = renderByteForge(null); return; }
+
+  const offset = tab.cursor;
+  const value = await readByte(tab, offset);
+  const original = (await tab.source.read(offset, 1))[0] ?? value;
+  if (tab.id !== activeId || tab.cursor !== offset) return;
+  host.innerHTML = renderByteForge({ offset, value, original, hasPatch: tab.patches.has(offset) });
 }

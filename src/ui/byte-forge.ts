@@ -1,18 +1,15 @@
 import { byteToBits } from "../bit-editor";
-import { forgeButton } from "./forge-button";
 
 /**
- * Inline byte editor rendered inside the hex grid, directly beneath the active row.
+ * Byte editor panel for the right rail.
  *
- * Conventional hex editors (hexed.it among them) push bit-level editing into a separate
- * side panel, so the byte you are changing and the controls that change it are at
- * opposite ends of the screen. Here the editor opens in the grid itself, on the row that
- * owns the byte, so the edit happens where the eye already is.
+ * An earlier version opened this inline inside the hex grid, which covered the rows
+ * underneath it -- you could not see or reach the surrounding bytes while editing. It
+ * lives in the rail instead: always visible, always in the same place, never occluding
+ * the data.
  *
- * Three ways to change the same byte, all live:
- *   - two nibble dials (high/low), stepped with the buttons or typed over
- *   - eight bit switches, MSB on the left, each showing its positional weight
- *   - the decoded readouts, which double as the verification of what you just did
+ * Two ways to change the byte, both live: eight bit switches (MSB first, so the row
+ * reads in the same order as the binary readout), and the hex field itself.
  */
 
 export interface ByteForgeState {
@@ -20,82 +17,52 @@ export interface ByteForgeState {
   value: number;
   /** Byte as it exists on disk, before any patch. Drives the revert control. */
   original: number;
-  /** True when the high nibble is typed but the low nibble is still pending. */
-  pendingNibble: boolean;
+  hasPatch: boolean;
 }
 
-const CHAR_NAMES: Record<number, string> = {
+const CONTROL_NAMES: Record<number, string> = {
   0: "NUL", 7: "BEL", 8: "BS", 9: "TAB", 10: "LF", 11: "VT", 12: "FF", 13: "CR",
-  27: "ESC", 32: "SPACE", 127: "DEL"
+  27: "ESC", 32: "SP", 127: "DEL"
 };
 
 function describeCharacter(value: number): string {
-  const named = CHAR_NAMES[value];
+  const named = CONTROL_NAMES[value];
   if (named) return named;
-  if (value < 32 || value === 127) return `CTL-${value}`;
-  if (value > 126 && value < 160) return `C1-${value}`;
+  if (value < 32 || (value >= 127 && value < 160)) return "·";
   return String.fromCharCode(value);
 }
 
-/** Signed interpretation, which matters when patching flags and offsets by hand. */
-function signed(value: number): number {
-  return value > 127 ? value - 256 : value;
-}
+export function renderByteForge(state: ByteForgeState | null): string {
+  if (!state) return `<p class="rail-empty">Select a byte in the editor.</p>`;
 
-export function renderByteForge(state: ByteForgeState): string {
-  const { offset, value, original, pendingNibble } = state;
+  const { offset, value, original, hasPatch } = state;
   const hex = value.toString(16).padStart(2, "0").toUpperCase();
   const bits = byteToBits(value);
-  const dirty = value !== original;
 
-  // MSB first: bit 7 on the left, matching how the binary string reads.
-  const bitSwitches = Array.from({ length: 8 }, (_, index) => {
+  const switches = Array.from({ length: 8 }, (_, index) => {
     const bitIndex = 7 - index;
     const on = bits[index] === "1";
-    return `<button type="button" class="bf-bit${on ? " on" : ""}" data-bit="${bitIndex}"
-      title="Bit ${bitIndex} · weight ${1 << bitIndex} · click to flip"
-      aria-pressed="${on}"><b>${on ? "1" : "0"}</b><small>${bitIndex}</small></button>`;
+    return `<button type="button" class="bit${on ? " on" : ""}" data-bit="${bitIndex}"
+      aria-pressed="${on}" title="Bit ${bitIndex}, worth ${1 << bitIndex}">${on ? "1" : "0"}</button>`;
   }).join("");
 
-  const nibble = (which: "hi" | "lo", digit: string) => `
-    <div class="bf-nibble${which === "hi" && pendingNibble ? " pending" : ""}">
-      <button type="button" class="bf-step" data-nibble-step="${which}:1" title="Increase" aria-label="Increase ${which} nibble">+</button>
-      <input class="bf-nibble-input" data-nibble="${which}" value="${digit}" maxlength="1"
-        inputmode="text" spellcheck="false" aria-label="${which === "hi" ? "High" : "Low"} nibble">
-      <button type="button" class="bf-step" data-nibble-step="${which}:-1" title="Decrease" aria-label="Decrease ${which} nibble">−</button>
-      <span class="bf-nibble-tag">${which === "hi" ? "HIGH" : "LOW"}</span>
+  return `
+    <div class="byte-head">
+      <input class="byte-hex" id="byteHexInput" value="${hex}" maxlength="2" spellcheck="false"
+        inputmode="text" aria-label="Byte value in hexadecimal">
+      <div class="byte-meta">
+        <code>0x${offset.toString(16).toUpperCase().padStart(8, "0")}</code>
+        <span>${value} · ${escapeHtml(describeCharacter(value))}${hasPatch ? ` · was ${original.toString(16).padStart(2, "0").toUpperCase()}` : ""}</span>
+      </div>
+    </div>
+
+    <div class="bit-row" role="group" aria-label="Bits, most significant first">${switches}</div>
+    <div class="bit-scale"><span>128</span><span>64</span><span>32</span><span>16</span><span>8</span><span>4</span><span>2</span><span>1</span></div>
+
+    <div class="byte-actions">
+      <button type="button" data-action="forge-invert">Invert</button>
+      <button type="button" data-action="forge-revert"${hasPatch ? "" : " disabled"}>Revert</button>
     </div>`;
-
-  return `<div class="byte-forge" data-forge-offset="${offset}">
-    <div class="bf-identity">
-      <span class="bf-label">EDITING</span>
-      <code class="bf-offset">0x${offset.toString(16).toUpperCase().padStart(8, "0")}</code>
-      ${dirty ? `<span class="bf-dirty" title="Differs from the byte on disk">MODIFIED</span>` : ""}
-    </div>
-
-    <div class="bf-nibbles">
-      ${nibble("hi", hex[0] ?? "0")}
-      ${nibble("lo", hex[1] ?? "0")}
-    </div>
-
-    <div class="bf-bits" role="group" aria-label="Bit switches, most significant first">
-      ${bitSwitches}
-    </div>
-
-    <dl class="bf-readout">
-      <div><dt>DEC</dt><dd>${value}</dd></div>
-      <div><dt>SIGNED</dt><dd>${signed(value)}</dd></div>
-      <div><dt>OCT</dt><dd>${value.toString(8).padStart(3, "0")}</dd></div>
-      <div><dt>CHAR</dt><dd>${escapeHtml(describeCharacter(value))}</dd></div>
-      <div><dt>WAS</dt><dd>${original.toString(16).padStart(2, "0").toUpperCase()}</dd></div>
-    </dl>
-
-    <div class="bf-actions">
-      ${forgeButton({ text: "Revert", action: "forge-revert", variant: "is-ghost is-compact", disabled: !dirty, title: "Restore the byte on disk" })}
-      ${forgeButton({ text: "Invert", action: "forge-invert", variant: "is-ghost is-compact", title: "Flip every bit" })}
-      ${forgeButton({ text: "Next", action: "forge-next", variant: "is-primary is-compact", title: "Commit and move to the next byte" })}
-    </div>
-  </div>`;
 }
 
 function escapeHtml(value: string): string {
