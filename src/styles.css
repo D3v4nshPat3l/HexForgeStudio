@@ -1346,7 +1346,12 @@ kbd {
 
 .global-status {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  /*
+   * Four children: the rail toggles, the offset readout, the mode, and the stage.
+   * A three-track list wrapped the last one onto a second row, which a fixed-height
+   * bar then clipped.
+   */
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   gap: calc(var(--u) * 4);
   align-items: center;
   padding: 0 calc(var(--u) * 3);
