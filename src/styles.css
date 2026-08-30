@@ -485,7 +485,7 @@ body.app-mode, html:has(body.app-mode), body.app-mode #app { height: 100%; overf
 .app-workspace {
   min-height: 0;
   display: grid;
-  grid-template-columns: var(--rail-left) minmax(0, 1fr) var(--rail-right);
+  grid-template-columns: var(--rail-left) auto minmax(0, 1fr) auto var(--rail-right);
   gap: calc(var(--u) * 2.5);
   padding: calc(var(--u) * 2.5) calc(var(--u) * 2.5) 0;
 }
@@ -1428,7 +1428,7 @@ kbd {
 
 /* =============================================================== responsive */
 @media (max-width: 1400px) {
-  .app-workspace { grid-template-columns: clamp(220px, 19vw, 280px) minmax(0, 1fr) clamp(230px, 20vw, 290px); }
+  .studio-shell { --rail-left: clamp(190px, 17vw, 260px); --rail-right: clamp(200px, 18vw, 270px); }
   .brand-header { grid-template-columns: minmax(260px, 1fr) minmax(180px, 1fr) auto; gap: calc(var(--u) * 4); }
 }
 
@@ -1445,7 +1445,7 @@ kbd {
   .studio-shell { min-width: 940px; height: auto; min-height: 100vh; grid-template-rows: auto auto auto minmax(680px, 1fr) var(--status-h); }
   .brand-header { min-height: var(--header-h); grid-template-columns: 1fr auto; }
   .active-file-heading { display: none; }
-  .app-workspace { grid-template-columns: 230px minmax(600px, 1fr); }
+  .studio-shell { --rail-left: 220px; }
   .right-rail { display: none; }
   .two-column-cards, .preview-columns { grid-template-columns: 1fr; }
   .intel-hero { grid-template-columns: 1fr; justify-items: center; text-align: center; }
@@ -1668,12 +1668,9 @@ body.panel-open { overflow: hidden; }
    ========================================================================== */
 
 .studio-shell.wide-view .app-workspace {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 0 0 minmax(0, 1fr) 0 0;
 }
-.studio-shell.wide-view .left-rail,
-.studio-shell.wide-view .right-rail {
-  display: none;
-}
+
 
 .wide-toggle {
   margin-left: auto;
@@ -1954,3 +1951,141 @@ textarea.injector-source {
   .payload-browser { grid-template-columns: 1fr; }
   .payload-categories { grid-auto-flow: column; grid-auto-columns: max-content; max-height: none; overflow-x: auto; }
 }
+
+
+/* ============================================================================
+   Rail sizing
+   ----------------------------------------------------------------------------
+   Each rail can be dragged within bounds, or hidden entirely. Hiding collapses
+   the rail's track and its resizer to zero so the byte grid takes the space.
+   ========================================================================== */
+
+.rail-resizer {
+  width: calc(var(--u) * 1.2);
+  align-self: stretch;
+  border-radius: 999px;
+  background: transparent;
+  cursor: col-resize;
+  transition: background 0.15s var(--ease);
+  touch-action: none;
+}
+.rail-resizer:hover,
+.rail-resizer:focus-visible,
+.rail-resizer.dragging { background: var(--accent-line); }
+.rail-resizer.dragging { background: var(--accent-2); }
+
+/* A hidden rail collapses its own track and the handle beside it. */
+.studio-shell.left-hidden .app-workspace { grid-template-columns: 0 0 minmax(0, 1fr) auto var(--rail-right); }
+.studio-shell.right-hidden .app-workspace { grid-template-columns: var(--rail-left) auto minmax(0, 1fr) 0 0; }
+.studio-shell.left-hidden.right-hidden .app-workspace { grid-template-columns: 0 0 minmax(0, 1fr) 0 0; }
+/*
+ * Hidden rails keep their grid slots. `display: none` removes an item from grid
+ * auto-placement, which shifts every later child up a track -- the centre workspace
+ * would land in the zero-width first track and collapse to nothing.
+ */
+.studio-shell.left-hidden .left-rail,
+.studio-shell.left-hidden #resizeLeft,
+.studio-shell.right-hidden .right-rail,
+.studio-shell.right-hidden #resizeRight,
+.studio-shell.wide-view .left-rail,
+.studio-shell.wide-view .right-rail,
+.studio-shell.wide-view .rail-resizer {
+  visibility: hidden;
+  overflow: hidden;
+  min-width: 0;
+  width: 0;
+  padding: 0;
+  border: 0;
+  pointer-events: none;
+}
+
+/* Collapse control inside each rail heading. */
+.left-rail h2, .right-rail h2 { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--u) * 2); }
+.rail-collapse {
+  flex: 0 0 auto;
+  width: calc(var(--u) * 4.5);
+  height: calc(var(--u) * 4.5);
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--dim);
+  font-size: var(--fs-nano);
+  cursor: pointer;
+}
+.rail-collapse:hover { border-color: var(--accent-line); color: var(--accent-2); background: var(--accent-wash); }
+
+/* Restore controls in the status bar, so a hidden rail is always recoverable. */
+.rail-toggles { display: flex; gap: calc(var(--u) * 1.5); }
+.rail-restore {
+  padding: 0 calc(var(--u) * 1.8);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--dim);
+  font: var(--fs-nano) var(--sans);
+  cursor: pointer;
+}
+.rail-restore:hover { border-color: var(--accent-line); color: var(--accent-2); }
+.rail-restore.active { color: var(--muted); border-color: var(--line-strong); }
+
+/* Below this width the rails stack, so dragging them is meaningless. */
+@media (max-width: 1100px) {
+  .rail-resizer { display: none; }
+  .app-workspace,
+  .studio-shell.left-hidden .app-workspace,
+  .studio-shell.right-hidden .app-workspace,
+  .studio-shell.left-hidden.right-hidden .app-workspace { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ============================================================================
+   Injector tool switch and connect-back builder
+   ========================================================================== */
+
+.tool-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  margin-bottom: calc(var(--u) * 3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+.tool-switch button {
+  padding: calc(var(--u) * 1.4) calc(var(--u) * 3.5);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--fs-nano);
+  font-weight: 600;
+  cursor: pointer;
+}
+.tool-switch button:hover { color: var(--text-strong); }
+.tool-switch button.active { background: var(--accent-2); color: var(--on-accent); }
+
+.shell-section {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  margin: calc(var(--u) * 4) 0 calc(var(--u) * 2);
+  font-size: var(--fs-nano);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+}
+.shell-section span {
+  padding: 0 calc(var(--u) * 1.2);
+  border-radius: 999px;
+  background: var(--panel-3);
+  font: var(--fs-nano) var(--mono);
+}
+
+.shell-list { display: grid; gap: calc(var(--u) * 1.2); }
+.shell-item { gap: calc(var(--u) * 1.2); }
+.shell-item-head { display: flex; align-items: baseline; gap: calc(var(--u) * 2); flex-wrap: wrap; }
+.shell-item-head b { font-size: var(--fs-nano); font-weight: 600; color: var(--text-strong); }
+.shell-item-head em { font-style: normal; font-size: var(--fs-nano); color: var(--faint); }
+.shell-item code { display: block; line-height: 1.55; }

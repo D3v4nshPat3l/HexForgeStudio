@@ -148,7 +148,7 @@ const SHELL_HTML = `
 
   <nav class="command-bar" aria-label="Application commands">
     <button data-command="new">${hoverButtonLayers("New", '', '＋')}</button>
-    <button class="primary" data-command="open">${hoverButtonLayers("Open", '')}</button>
+    <button data-command="open">${hoverButtonLayers("Open", '', '↥')}</button>
     <button data-command="import">${hoverButtonLayers("Import Data", '', '⇥')}</button>
     <span class="command-divider"></span>
     <button data-command="save" disabled>${hoverButtonLayers("Save", '', '▣')}</button>
@@ -182,7 +182,7 @@ const SHELL_HTML = `
   <main class="app-workspace">
     <aside class="left-rail">
       <div class="rail-scroll">
-        <h2>FILE NAVIGATOR</h2>
+        <h2>FILE NAVIGATOR<button type="button" class="rail-collapse" data-action="collapse-left" title="Hide this panel" aria-label="Hide the file navigator panel">⟨</button></h2>
         <section class="rail-section">
           <h3>FILE INFORMATION</h3>
           <dl id="fileInformation">
@@ -209,13 +209,17 @@ const SHELL_HTML = `
       </div>
     </aside>
 
+    <div class="rail-resizer" id="resizeLeft" role="separator" aria-orientation="vertical"
+      aria-label="Resize the file navigator panel" tabindex="0"></div>
     <section class="center-workspace">
       <div class="view-content" id="viewContent"></div>
     </section>
 
+    <div class="rail-resizer" id="resizeRight" role="separator" aria-orientation="vertical"
+      aria-label="Resize the byte editor panel" tabindex="0"></div>
     <aside class="right-rail">
       <div class="rail-scroll">
-        <h2>BYTE EDITOR</h2>
+        <h2>BYTE EDITOR<button type="button" class="rail-collapse" data-action="collapse-right" title="Hide this panel" aria-label="Hide the byte editor panel">⟩</button></h2>
         <section class="rail-section" id="byteForge"><p class="rail-empty">Select a byte in the editor.</p></section>
         <section class="rail-section compact-section">
           <h3>SELECTION</h3>
@@ -240,7 +244,7 @@ const SHELL_HTML = `
     </aside>
   </main>
 
-  <footer class="global-status" id="globalStatus"><span>Offset: — &nbsp;&nbsp; Selection: 0 bytes &nbsp;&nbsp; Size: 0 bytes</span><span>HEX / Windows-1252</span><span>Ready</span></footer>
+  <footer class="global-status" id="globalStatus"><span id="railToggles" class="rail-toggles"></span><span>Offset: — &nbsp;&nbsp; Selection: 0 bytes &nbsp;&nbsp; Size: 0 bytes</span><span>HEX / Windows-1252</span><span>Ready</span></footer>
   <input id="fileInput" type="file" multiple hidden />
   <input id="compareInput" type="file" hidden />
   <div class="drop-overlay" id="dropOverlay"><div>${logoSvg}<strong>Drop files to open in HexForge Studio</strong><span>Files never leave this browser.</span></div></div>
@@ -1297,10 +1301,15 @@ function renderReportView(): void {
 function updateStatusOnly(): void {
   const tab = activeTab();
   const target = $("#globalStatus") as HTMLElement;
-  if (!tab) { target.innerHTML = '<span>Offset: — &nbsp;&nbsp; Selection: 0 bytes &nbsp;&nbsp; Size: 0 bytes</span><span>HEX / Windows-1252</span><span>Ready</span>'; return; }
+  if (!tab) {
+    const keptToggles = target.querySelector("#railToggles")?.outerHTML ?? "";
+    target.innerHTML = keptToggles + '<span>Offset: — &nbsp;&nbsp; Selection: 0 bytes &nbsp;&nbsp; Size: 0 bytes</span><span>HEX / Windows-1252</span><span>Ready</span>';
+    return;
+  }
   const selection = selectionBounds(tab);
   const stage = tab.progress ? `${tab.progress.stage} ${tab.progress.total ? Math.round(tab.progress.completed / tab.progress.total * 100) : 0}%` : tab.error ? "Analysis error" : tab.analysis ? "Analysis ready" : "Queued";
-  target.innerHTML = `<span>Offset: ${formatOffset(tab.cursor)} &nbsp;&nbsp; Selection: ${selection?.length.toLocaleString() ?? 0} bytes &nbsp;&nbsp; Size: ${tab.file.size.toLocaleString()} bytes &nbsp;&nbsp; Modified: ${tab.patches.size.toLocaleString()}</span><span>${tab.inputMode.toUpperCase()} / Windows-1252</span><span>${escapeHtml(stage)}</span>`;
+  const toggles = target.querySelector("#railToggles")?.outerHTML ?? "";
+  target.innerHTML = toggles + `<span>Offset: ${formatOffset(tab.cursor)} &nbsp;&nbsp; Selection: ${selection?.length.toLocaleString() ?? 0} bytes &nbsp;&nbsp; Size: ${tab.file.size.toLocaleString()} bytes &nbsp;&nbsp; Modified: ${tab.patches.size.toLocaleString()}</span><span>${tab.inputMode.toUpperCase()} / Windows-1252</span><span>${escapeHtml(stage)}</span>`;
 }
 
 async function copySelection(asText: boolean): Promise<void> {
@@ -1701,6 +1710,12 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  const toolPick = target.closest<HTMLElement>("[data-injector-tool]")?.dataset.injectorTool;
+  if (toolPick) {
+    injector.tool = toolPick as InjectorState["tool"];
+    renderInjectorPanel();
+    return;
+  }
   const categoryPick = target.closest<HTMLElement>("[data-payload-category]")?.dataset.payloadCategory;
   if (categoryPick !== undefined) {
     injector.categoryIndex = Number(categoryPick) || 0;
@@ -1764,6 +1779,8 @@ app.addEventListener("click", (event) => {
   else if (action === "copy-text") void copySelection(true);
   else if (action === "save-selection") void exportSelection();
   else if (action === "select-all" && tab?.file.size) { tab.selectionStart = 0; tab.selectionEnd = tab.file.size - 1; tab.cursor = 0; tab.page = 0; updateAll(); }
+  else if (action === "collapse-left") toggleRail("left");
+  else if (action === "collapse-right") toggleRail("right");
   else if (action === "inject-clear") { injector.source = ""; injector.edited = true; renderInjectorPanel(); }
   else if (action === "inject-apply") void applyInjection().catch((error) => toast(error instanceof Error ? error.message : String(error), "error"));
   else if (action === "inject-copy") {
@@ -1795,6 +1812,18 @@ app.addEventListener("click", (event) => {
 
 app.addEventListener("input", (event) => {
   const typed = event.target as HTMLElement;
+  if (typed.id === "injHost" || typed.id === "injPort") {
+    if (typed.id === "injHost") injector.host = (typed as HTMLInputElement).value;
+    else injector.port = (typed as HTMLInputElement).value;
+    if (injector.tool === "shell") {
+      renderInjectorPanel();
+      const box = document.querySelector<HTMLInputElement>(`#${typed.id}`);
+      if (box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
+    } else {
+      refreshInjectorPreview();
+    }
+    return;
+  }
   if (typed.id === "injQuery") {
     injector.query = (typed as HTMLInputElement).value;
     renderInjectorPanel();
@@ -1839,6 +1868,8 @@ app.addEventListener("change", (event) => {
     }
     return;
   }
+  if (target.id === "injShellBinary") { injector.shellBinary = target.value; renderInjectorPanel(); return; }
+  if (target.id === "injShellPlatform") { injector.shellPlatform = target.value as InjectorState["shellPlatform"]; renderInjectorPanel(); return; }
   if (target.id === "injEncoding") { injector.encoding = target.value as EncodingId; renderInjectorPanel(); return; }
   if (target.id === "injMode") { injector.mode = target.value as InjectorState["mode"]; renderInjectorPanel(); return; }
   if (target.id === "injOffset") { injector.offsetText = target.value; return; }
@@ -2012,6 +2043,11 @@ export function mountWorkstation(root: HTMLDivElement): void {
     compareInput.value = "";
   });
 
+  applyRailLayout();
+  bindRailResizer("resizeLeft", "left");
+  bindRailResizer("resizeRight", "right");
+  renderRailToggles();
+
   registerListeners();
   updateAll();
 }
@@ -2147,6 +2183,9 @@ function buildInjectionBytes(): Uint8Array {
 }
 
 function renderInjectorPanel(): void {
+  // viewContent is replaced wholesale below, which resets the scroll container. Capture
+  // the offset first so selecting a payload does not throw the reader back to the top.
+  const keptScroll = viewContent.querySelector<HTMLElement>(".content-scroll")?.scrollTop ?? 0;
   if (libraryStatus() === "idle") {
     // Roughly 4.6 MB, so it is fetched on first use rather than at startup.
     void loadPayloadLibrary().then(() => { if (activeView === "injector") renderInjectorPanel(); });
@@ -2161,6 +2200,9 @@ function renderInjectorPanel(): void {
     fileSize: tab?.file.size ?? 0,
     preview: buildInjectionBytes()
   });
+
+  const restored = viewContent.querySelector<HTMLElement>(".content-scroll");
+  if (restored && keptScroll > 0) restored.scrollTop = keptScroll;
 }
 
 /** Applies the current injection to the open buffer. */
@@ -2249,4 +2291,138 @@ function refreshInjectorPreview(): void {
   if (sourceCount) sourceCount.textContent = `${injector.source.length.toLocaleString()} characters`;
   const reset = sourceCard?.querySelector<HTMLButtonElement>("[data-action='inject-reset']");
   if (reset) reset.disabled = !injector.edited;
+}
+
+
+/* ---------------------------------------------------------------- rail sizing */
+
+/** Bounds keep either rail from being dragged to uselessness or over the grid. */
+const RAIL_MIN = 180;
+const RAIL_MAX = 520;
+const RAIL_STORAGE = "hexforge.rails";
+
+interface RailLayout { left: number; right: number; leftHidden: boolean; rightHidden: boolean }
+
+let rails: RailLayout = loadRailLayout();
+
+function loadRailLayout(): RailLayout {
+  const fallback: RailLayout = { left: 0, right: 0, leftHidden: false, rightHidden: false };
+  try {
+    const raw = localStorage.getItem(RAIL_STORAGE);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<RailLayout>;
+    return {
+      left: clampRail(Number(parsed.left) || 0),
+      right: clampRail(Number(parsed.right) || 0),
+      leftHidden: Boolean(parsed.leftHidden),
+      rightHidden: Boolean(parsed.rightHidden)
+    };
+  } catch {
+    // Private-mode storage and cleared site data both throw; the default layout is fine.
+    return fallback;
+  }
+}
+
+function saveRailLayout(): void {
+  try { localStorage.setItem(RAIL_STORAGE, JSON.stringify(rails)); } catch { /* storage unavailable */ }
+}
+
+/** A width of 0 means "use the stylesheet default"; anything else is clamped. */
+function clampRail(width: number): number {
+  if (width <= 0) return 0;
+  return Math.max(RAIL_MIN, Math.min(RAIL_MAX, Math.round(width)));
+}
+
+function applyRailLayout(): void {
+  const shell = document.querySelector<HTMLElement>(".studio-shell");
+  if (!shell) return;
+  shell.classList.toggle("left-hidden", rails.leftHidden);
+  shell.classList.toggle("right-hidden", rails.rightHidden);
+  if (rails.left > 0) shell.style.setProperty("--rail-left", `${rails.left}px`);
+  else shell.style.removeProperty("--rail-left");
+  if (rails.right > 0) shell.style.setProperty("--rail-right", `${rails.right}px`);
+  else shell.style.removeProperty("--rail-right");
+}
+
+/**
+ * Pointer-drag resizing for one rail.
+ *
+ * Pointer capture keeps the drag alive when the cursor outruns the 6px handle, which it
+ * always does. Row geometry depends on the grid width, so the hex view is re-measured
+ * once the drag ends rather than on every move.
+ */
+function bindRailResizer(id: string, side: "left" | "right"): void {
+  const handle = document.querySelector<HTMLElement>(`#${id}`);
+  if (!handle) return;
+
+  const step = (delta: number): void => {
+    const current = side === "left"
+      ? (rails.left || document.querySelector<HTMLElement>(".left-rail")?.getBoundingClientRect().width || RAIL_MIN)
+      : (rails.right || document.querySelector<HTMLElement>(".right-rail")?.getBoundingClientRect().width || RAIL_MIN);
+    const next = clampRail(current + delta);
+    if (side === "left") rails.left = next; else rails.right = next;
+    applyRailLayout();
+  };
+
+  handle.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    try { handle.setPointerCapture(event.pointerId); } catch { /* capture unavailable; drag still tracks */ }
+    handle.classList.add("dragging");
+    const startX = event.clientX;
+    const rail = document.querySelector<HTMLElement>(side === "left" ? ".left-rail" : ".right-rail");
+    const startWidth = rail?.getBoundingClientRect().width ?? RAIL_MIN;
+
+    const onMove = (move: PointerEvent): void => {
+      // The right rail grows as the pointer travels left, so its delta is inverted.
+      const delta = side === "left" ? move.clientX - startX : startX - move.clientX;
+      const next = clampRail(startWidth + delta);
+      if (side === "left") rails.left = next; else rails.right = next;
+      applyRailLayout();
+    };
+    const onUp = (): void => {
+      handle.classList.remove("dragging");
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", onUp);
+      saveRailLayout();
+      hexRowHeightCache = 0;
+      if (activeView === "hex") renderHexView();
+    };
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onUp);
+  });
+
+  // Keyboard resizing, since a 6px drag target is not reachable for everyone.
+  handle.addEventListener("keydown", (event) => {
+    const amount = event.shiftKey ? 40 : 12;
+    if (event.key === "ArrowLeft") { event.preventDefault(); step(side === "left" ? -amount : amount); }
+    else if (event.key === "ArrowRight") { event.preventDefault(); step(side === "left" ? amount : -amount); }
+    else return;
+    saveRailLayout();
+    hexRowHeightCache = 0;
+    if (activeView === "hex") renderHexView();
+  });
+}
+
+/** Collapses or restores a rail; the grid reclaims the space either way. */
+function toggleRail(side: "left" | "right"): void {
+  if (side === "left") rails.leftHidden = !rails.leftHidden;
+  else rails.rightHidden = !rails.rightHidden;
+  applyRailLayout();
+  saveRailLayout();
+  renderRailToggles();
+  window.requestAnimationFrame(() => {
+    hexRowHeightCache = 0;
+    if (activeView === "hex") renderHexView();
+  });
+}
+
+/** Keeps the status-bar restore buttons in step with what is hidden. */
+function renderRailToggles(): void {
+  const slot = document.querySelector<HTMLElement>("#railToggles");
+  if (!slot) return;
+  slot.innerHTML =
+    `<button type="button" class="rail-restore${rails.leftHidden ? "" : " active"}" data-action="collapse-left"
+      title="${rails.leftHidden ? "Show" : "Hide"} the file navigator">◧ Navigator</button>` +
+    `<button type="button" class="rail-restore${rails.rightHidden ? "" : " active"}" data-action="collapse-right"
+      title="${rails.rightHidden ? "Show" : "Hide"} the byte editor">Byte editor ◨</button>`;
 }
