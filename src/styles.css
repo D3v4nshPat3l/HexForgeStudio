@@ -253,7 +253,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.15;
-  color: #fff;
+  /* Was hard-coded #fff, which put white on the light theme's white header and made
+     the product name invisible there. */
+  color: var(--text-strong);
 }
 .brand-lockup p {
   margin: calc(var(--u) * 0.8) 0 0;
@@ -285,22 +287,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .header-tools { display: flex; align-items: center; gap: calc(var(--u) * 2); z-index: 1; }
 
-.header-home {
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 99px;
-  padding: calc(var(--u) * 1.6) calc(var(--u) * 3.2);
-  background: rgba(255, 255, 255, 0.06);
+/*
+ * The kinetic trigger in the studio header.
+ *
+ * The landing paints this button in fixed white-on-dark because that page is always
+ * dark. The workstation has a light theme too, so here it is redrawn from the theme
+ * tokens -- otherwise it renders white text on a light header.
+ */
+.brand-header .nav-menu-btn {
+  height: calc(var(--u) * 7);
+  padding: 0 calc(var(--u) * 1.4) 0 calc(var(--u) * 3);
+  border-color: var(--line-strong);
+  background: var(--panel-2);
   color: var(--text);
   font-size: var(--fs-nano);
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-decoration: none;
-  transition: background 0.15s var(--ease);
 }
-.header-home:hover { background: rgba(255, 255, 255, 0.15); }
+.brand-header .nav-menu-btn:hover { background: var(--panel-hi); border-color: var(--accent-line); }
+.brand-header .menu-btn-icon { background: var(--panel-3); color: var(--text); }
 
 /* Shown while the workstation chunk downloads on first navigation to #/app. */
 .boot-screen {

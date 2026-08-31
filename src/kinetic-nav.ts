@@ -21,14 +21,16 @@ gsap.registerPlugin(CustomEase);
 
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)");
 
-interface KineticItem {
+export interface KineticItem {
   label: string;
   detail: string;
   href?: string;
   panel?: string;
+  /** A workspace view to activate, for the copy mounted inside the workstation. */
+  view?: string;
 }
 
-const ITEMS: KineticItem[] = [
+export const LANDING_ITEMS: KineticItem[] = [
   { label: "Home", detail: "Overview", href: "#/" },
   { label: "Workstation", detail: "Open the editor", href: "#/app" },
   { label: "Capabilities", detail: "What it analyses", panel: "capabilities" },
@@ -67,18 +69,39 @@ const SHAPES = [
     '<line class="shape-element" x1="200" y1="0" x2="400" y2="200" stroke="rgba(163,113,247,0.11)" stroke-width="20"/>'
 ];
 
-function markup(): string {
-  const links = ITEMS.map((item, index) => {
+/**
+ * Destinations for the copy mounted in the workstation.
+ *
+ * The view tabs stay where they are; this is a second, larger-target route to the same
+ * places that also says what each view is for -- the tab strip has room for a name and
+ * nothing else.
+ */
+export const WORKSTATION_ITEMS: KineticItem[] = [
+  { label: "Hex Editor", detail: "Bytes, bits and patches", view: "hex" },
+  { label: "Signature Analysis", detail: "Format and magic bytes", view: "signature" },
+  { label: "Threat Intelligence", detail: "Behaviour and indicators", view: "intel" },
+  { label: "Forensics Lab", detail: "Entropy, strings, hashes", view: "forensics" },
+  { label: "File Comparison", detail: "Diff two binaries", view: "comparison" },
+  { label: "Injector", detail: "Payloads and connect-back", view: "injector" },
+  { label: "PDF Report", detail: "Export the findings", view: "report" },
+  { label: "Overview", detail: "Back to the landing", href: "#/" }
+];
+
+function markup(items: KineticItem[]): string {
+  const links = items.map((item, index) => {
     const inner =
       '<span class="nav-link-index">' + String(index).padStart(2, "0") + "</span>" +
       '<span class="nav-link-mask"><span class="nav-link-text">' + item.label + "</span></span>" +
       '<span class="nav-link-detail">' + item.detail + "</span>" +
       '<span class="nav-link-hover-bg" aria-hidden="true"></span>';
-    const open = item.panel
-      ? '<button type="button" class="nav-link" data-panel="' + item.panel + '">'
-      : '<a class="nav-link" href="' + item.href + '">';
-    const close = item.panel ? "</button>" : "</a>";
-    return '<li class="menu-list-item" data-shape="' + (index + 1) + '">' + open + inner + close + "</li>";
+    let open: string;
+    if (item.panel) open = '<button type="button" class="nav-link" data-panel="' + item.panel + '">';
+    else if (item.view) open = '<button type="button" class="nav-link" data-view-jump="' + item.view + '">';
+    else open = '<a class="nav-link" href="' + item.href + '">';
+    const close = item.href && !item.panel && !item.view ? "</a>" : "</button>";
+    // Five shapes cycle across however many destinations a surface declares.
+    const shape = (index % SHAPES.length) + 1;
+    return '<li class="menu-list-item" data-shape="' + shape + '">' + open + inner + close + "</li>";
   }).join("");
 
   const shapes = SHAPES.map(
@@ -112,11 +135,15 @@ function markup(): string {
  * Mounts the overlay and wires it to the trigger button.
  * Returns a teardown that removes every listener and kills the running timeline.
  */
-export function startKineticNav(root: HTMLElement, trigger: HTMLElement): () => void {
+export function startKineticNav(
+  root: HTMLElement,
+  trigger: HTMLElement,
+  items: KineticItem[] = LANDING_ITEMS
+): () => void {
   if (!gsap.parseEase("kinetic")) CustomEase.create("kinetic", "0.65, 0.01, 0.05, 0.99");
 
   const host = document.createElement("div");
-  host.innerHTML = markup();
+  host.innerHTML = markup(items);
   const wrapper = host.firstElementChild as HTMLElement;
   root.appendChild(wrapper);
 
@@ -199,7 +226,12 @@ export function startKineticNav(root: HTMLElement, trigger: HTMLElement): () => 
   };
   // A chosen destination should close the overlay behind it.
   const onPick = (event: Event): void => {
-    if ((event.target as HTMLElement).closest(".nav-link")) setOpen(false);
+    const link = (event.target as HTMLElement).closest<HTMLElement>(".nav-link");
+    if (!link) return;
+    // View jumps drive the existing tab strip, so the two routes cannot disagree.
+    const view = link.dataset.viewJump;
+    if (view) document.querySelector<HTMLElement>('.view-tabs [data-view="' + view + '"]')?.click();
+    setOpen(false);
   };
 
   trigger.addEventListener("click", onTrigger);

@@ -1089,7 +1089,12 @@ button.menu-link { width: 100%; }
   z-index: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /*
+   * `safe` matters here: with plain centring, a list taller than the panel overflows
+   * equally in both directions and the top items become unreachable -- the workstation
+   * copy carries eight destinations and lost its first one off the top edge.
+   */
+  justify-content: safe center;
   gap: clamp(18px, 3vh, 34px);
   width: 100%;
   padding: clamp(28px, 6vw, 76px);
@@ -1118,7 +1123,7 @@ button.menu-link { width: 100%; }
   column-gap: clamp(10px, 2vw, 18px);
   row-gap: 2px;
   width: 100%;
-  padding: clamp(10px, 1.6vh, 16px) clamp(10px, 2vw, 20px);
+  padding: clamp(7px, 1.2vh, 14px) clamp(10px, 2vw, 20px);
   border: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 10px;
@@ -1142,7 +1147,12 @@ button.menu-link { width: 100%; }
 .nav-link-text {
   display: block;
   font-family: var(--font-display, inherit);
-  font-size: clamp(30px, 5.4vw, 60px);
+  /*
+   * Height is part of the constraint, not just width. The landing lists five
+   * destinations and the workstation eight, and a purely width-based size overflowed
+   * the panel on a short viewport.
+   */
+  font-size: clamp(24px, min(5.4vw, 5.4vh), 60px);
   line-height: 1.06;
   letter-spacing: -0.03em;
   color: #fff;

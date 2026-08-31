@@ -1,4 +1,5 @@
 import { BRAND_MARK } from "./brand";
+import { startKineticNav, WORKSTATION_ITEMS } from "./kinetic-nav";
 import { renderByteForge } from "./ui/byte-forge";
 import { hoverButtonLayers } from "./ui/forge-button";
 import { DEFAULT_INJECTOR_STATE, payloadKey, renderInjectorView, type InjectorState } from "./ui/injector";
@@ -159,8 +160,16 @@ const SHELL_HTML = `
     </div>
     <div class="header-tools">
       <span id="riskBadgeSlot"></span>
-      <a class="header-home" href="#/" title="Back to the overview">Overview</a>
       <button class="theme-toggle" data-action="toggle-theme" title="Switch between the dark and light console themes" aria-label="Switch theme">◐</button>
+      <button type="button" class="nav-menu-btn" id="studioMenuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="kineticNav">
+        <span class="menu-btn-text"><span>Menu</span><span>Close</span></span>
+        <span class="menu-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 16 16" fill="none" width="100%">
+            <path d="M7.33333 16L7.33333 0L8.66667 0L8.66667 16L7.33333 16Z" fill="currentColor"></path>
+            <path d="M16 8.66667L0 8.66667L0 7.33333L16 7.33333L16 8.66667Z" fill="currentColor"></path>
+          </svg>
+        </span>
+      </button>
     </div>
   </header>
 
@@ -2102,6 +2111,8 @@ window.addEventListener("beforeunload", () => { worker.terminate(); for (const t
 void buildPdfReport;
 
 /** Builds the workstation shell into `root` and wires it up. Called once by the router. */
+let stopStudioNav: (() => void) | null = null;
+
 export function mountWorkstation(root: HTMLDivElement): void {
   app = root;
   app.innerHTML = SHELL_HTML;
@@ -2132,6 +2143,14 @@ export function mountWorkstation(root: HTMLDivElement): void {
   bindRailResizer("resizeLeft", "left");
   bindRailResizer("resizeRight", "right");
   renderRailToggles();
+
+  // The shell is rebuilt on every mount, so a previous overlay must be torn down
+  // before a new one is attached to the fresh trigger.
+  stopStudioNav?.();
+  const menuTrigger = document.querySelector<HTMLElement>("#studioMenuBtn");
+  stopStudioNav = menuTrigger
+    ? startKineticNav(app, menuTrigger, WORKSTATION_ITEMS)
+    : null;
 
   registerListeners();
   updateAll();
