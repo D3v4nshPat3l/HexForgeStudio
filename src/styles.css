@@ -577,7 +577,21 @@ textarea { resize: vertical; min-height: calc(var(--u) * 24); line-height: 1.6; 
 select { cursor: pointer; }
 input[type="checkbox"] { width: auto; accent-color: var(--accent); }
 
-button {
+/*
+ * Chrome for the workstation's buttons.
+ *
+ * These are element selectors, so they reached every button in the product -- including
+ * the landing and the navigation overlay, which style their own controls. That leak was
+ * visible: `button:hover` painted a panel-coloured block behind the two overlay entries
+ * that happen to be buttons rather than links (Capabilities and Privacy, which open
+ * panels), and put an accent border on the landing's ghost button. Both surfaces sit at
+ * (0,2,1) here, which outranks a plain `.class:hover`, so the component's own rule lost.
+ *
+ * The guard is `:where()`, which contributes no specificity of its own: these rules keep
+ * competing exactly as before everywhere they should apply, and simply stop reaching the
+ * two subtrees that dress their own buttons.
+ */
+button:where(:not(.landing *, #kineticNav *)) {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   background: var(--panel-2);
@@ -588,9 +602,9 @@ button {
   font-weight: 600;
   transition: background 0.14s var(--ease), border-color 0.14s var(--ease), transform 0.1s var(--ease), color 0.14s var(--ease);
 }
-button:hover:not(:disabled) { background: var(--panel-hi); border-color: var(--accent-line); color: var(--text-strong); }
-button:active:not(:disabled) { transform: translateY(1px); }
-button:disabled { color: var(--dim); background: var(--panel-2); border-color: var(--line-soft); cursor: default; }
+button:where(:not(.landing *, #kineticNav *)):hover:not(:disabled) { background: var(--panel-hi); border-color: var(--accent-line); color: var(--text-strong); }
+button:where(:not(.landing *, #kineticNav *)):active:not(:disabled) { transform: translateY(1px); }
+button:where(:not(.landing *, #kineticNav *)):disabled { color: var(--dim); background: var(--panel-2); border-color: var(--line-soft); cursor: default; }
 
 button.primary {
   background: var(--accent);

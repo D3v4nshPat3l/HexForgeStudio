@@ -31,27 +31,6 @@ export const STATS: Stat[] = [
   { glyph: "%", target: 0, suffix: "", decimals: 0, label: "Bytes Uploaded" }
 ];
 
-interface NavItem {
-  label: string;
-  href?: string;
-  panel?: string;
-  active?: boolean;
-}
-
-const NAV: NavItem[] = [
-  { label: "Home", href: "#/", active: true },
-  { label: "Workstation", href: "#/app" },
-  { label: "Capabilities", panel: "capabilities" },
-  { label: "Privacy", panel: "privacy" }
-];
-
-function navMarkup(className: string): string {
-  return NAV.map((item) => {
-    const classes = `${className}${item.active ? " active" : ""}`;
-    if (item.panel) return `<button type="button" class="${classes}" data-panel="${item.panel}">${item.label}</button>`;
-    return `<a class="${classes}" href="${item.href ?? "#/"}">${item.label}</a>`;
-  }).join("");
-}
 
 const CAPABILITY_GROUPS = [
   {

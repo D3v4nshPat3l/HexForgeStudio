@@ -804,14 +804,13 @@ body.menu-open { overflow: hidden; }
 }
 .panel-cta:hover { transform: translateY(-2px); box-shadow: 0 0 24px rgba(255, 255, 255, 0.3); }
 
-/* Nav entries that open a panel are buttons; strip the default chrome. */
-button.nav-link, button.menu-link {
-  border: 0;
-  background: none;
-  font-family: inherit;
-  cursor: pointer;
-}
-button.menu-link { width: 100%; }
+/*
+ * This once stripped button chrome for the header nav pill and the mobile sheet, both
+ * of which are gone. It outlived them and did real damage: at (0,1,1) it outranked
+ * `.nav-link` (0,1,0) whatever the source order, so the overlay's two button entries
+ * lost the row divider that the anchor entries kept -- anchors measured 0.8px solid,
+ * buttons 0px none. Removed with the components it served.
+ */
 
 @media (max-width: 720px) {
   .panel { width: calc(100vw - 24px); max-height: 88dvh; border-radius: 20px; }
@@ -1105,31 +1104,37 @@ button.menu-link { width: 100%; }
 .menu-list-item:nth-child(5n + 4) { --item: #a371f7; }
 .menu-list-item:nth-child(5n + 5) { --item: #ff7b72; }
 
-.nav-link-hover-bg {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: 10px;
-  background: var(--item);
-  opacity: 0;
-  transition: opacity 0.2s var(--ease-out);
-}
-.nav-link:hover .nav-link-hover-bg,
-.nav-link:focus-visible .nav-link-hover-bg { opacity: 0.09; }
+/*
+ * Hover changes the colour and nothing else.
+ *
+ * The first pass also tinted the whole row. Two problems with that: a filled block is
+ * the sort of flourish this menu was meant to stop doing, and it did not even render
+ * at the weight it was given -- the tint carried `z-index: -1` inside a `.nav-link`
+ * that establishes no stacking context, so it escaped the row and composited against
+ * a different backdrop, arriving far heavier than the 9% it was set to. The element
+ * is gone rather than corrected, because the colour alone was what was asked for.
+ */
 .nav-link:hover .nav-link-text,
-.nav-link:focus-visible .nav-link-text { color: var(--item); }
+.nav-link:focus-visible .nav-link-text,
 .nav-link:hover .nav-link-index,
 .nav-link:focus-visible .nav-link-index { color: var(--item); }
-.nav-link-text { transition: color 0.2s var(--ease-out); }
-.nav-link-index { transition: color 0.2s var(--ease-out); }
+.nav-link-text,
+.nav-link-index { transition: color 0.18s var(--ease-out); }
+
+/* A hairline in the item's colour marks the row without filling it. */
+.nav-link { border-bottom-color: rgba(255, 255, 255, 0.09); transition: border-color 0.18s var(--ease-out); }
+.nav-link:hover,
+.nav-link:focus-visible { border-bottom-color: var(--item); }
 
 @media (max-width: 620px) {
   .nav-link { grid-template-columns: 2.2rem 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nav-link-hover-bg,
-  }
+  .nav-link,
+  .nav-link-text,
+  .nav-link-index { transition: none; }
+}
 
 
 /* ============================================================================

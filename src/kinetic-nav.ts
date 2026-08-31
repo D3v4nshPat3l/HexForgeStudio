@@ -59,8 +59,7 @@ function markup(items: KineticItem[]): string {
     const inner =
       '<span class="nav-link-index">' + String(index).padStart(2, "0") + "</span>" +
       '<span class="nav-link-mask"><span class="nav-link-text">' + item.label + "</span></span>" +
-      '<span class="nav-link-detail">' + item.detail + "</span>" +
-      '<span class="nav-link-hover-bg" aria-hidden="true"></span>';
+      '<span class="nav-link-detail">' + item.detail + "</span>";
     let open: string;
     if (item.panel) open = '<button type="button" class="nav-link" data-panel="' + item.panel + '">';
     else if (item.view) open = '<button type="button" class="nav-link" data-view-jump="' + item.view + '">';
