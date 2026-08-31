@@ -2261,8 +2261,21 @@ textarea.injector-source {
  * This was lost once already when the katakana layer was removed, which is what left
  * the rain field painting behind an opaque panel and therefore invisible.
  */
-.studio-shell:not(.has-file) .view-content,
-.studio-shell:not(.has-file) .hex-view { background: transparent; }
+.view-content,
+.hex-view { background: transparent; }
+
+/*
+ * The byte grid's own surfaces go translucent so the field keeps running behind the
+ * data rather than being cut off at the panel edge. They stay mostly solid: hex is
+ * what has to be read, and the ground under it is what makes that possible. The
+ * contrast this leaves is measured rather than assumed.
+ */
+.studio-shell.has-file .hex-grid,
+.studio-shell.has-file .hex-rows,
+.studio-shell.has-file .hex-head { background-color: rgba(12, 12, 13, 0.86); }
+.studio-shell.has-file .hex-row:nth-child(2n),
+.studio-shell.has-file .hex-row:nth-child(2n) .row-offset,
+.studio-shell.has-file .hex-row:nth-child(2n) .ascii-cells { background-color: rgba(18, 18, 19, 0.82); }
 .center-workspace { position: relative; }
 .center-workspace > *:not(.rain-field):not(.constellation-mesh) { position: relative; z-index: 1; }
 
@@ -2285,7 +2298,7 @@ textarea.injector-source {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  --rain-c: #2ea8ff;
+  --rain-c: #3fb950;
   background-color: #000;
   background-image:
     radial-gradient(4px 100px at 0px 235px, var(--rain-c), #0000),
@@ -2371,8 +2384,9 @@ textarea.injector-source {
   z-index: 1;
   background-image: radial-gradient(circle at 50% 50%, #0000 0, #0000 2px, hsl(0 0 4%) 2px);
   background-size: 8px 8px;
-  --f: blur(1em) brightness(6);
-  animation: rain-hue 10s linear infinite;
+  /* Static filter: the published version rotates the hue continuously, which walks the
+     streaks through the whole spectrum. Holding it still keeps them green. */
+  backdrop-filter: blur(1em) brightness(6);
 }
 
 @keyframes rain-fall {
@@ -2456,11 +2470,6 @@ textarea.injector-source {
   }
 }
 
-@keyframes rain-hue {
-  0% { backdrop-filter: var(--f) hue-rotate(0deg); }
-  to { backdrop-filter: var(--f) hue-rotate(360deg); }
-}
-
 /*
  * Held back hard. At full strength this is a lightbox behind a hex dump; the byte
  * grid has to stay the brightest thing on screen. It fades further once a file is
@@ -2478,10 +2487,10 @@ textarea.injector-source {
  * screen, and the grid paints its own ground over this anyway.
  */
 .center-workspace .rain-field { opacity: 1; }
-.studio-shell.has-file .center-workspace .rain-field { opacity: 0.28; }
+/* Kept running with a file open rather than hidden, just well back. */
+.studio-shell.has-file .center-workspace .rain-field { opacity: 0.55; }
 :root[data-theme="light"] .center-workspace .rain-field { opacity: 0.2; }
 
 @media (prefers-reduced-motion: reduce) {
-  .rain-field, .rain-field::after { animation: none; }
-  .rain-field::after { backdrop-filter: blur(1em) brightness(6); }
+  .rain-field { animation: none; }
 }
