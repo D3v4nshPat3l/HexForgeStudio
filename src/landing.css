@@ -405,9 +405,7 @@ html:has(.landing), body:has(.landing) { overflow-x: hidden; overflow-y: auto; }
 }
 
 .cta {
-  display: inline-block;
-  margin-top: clamp(18px, 2.8vh, 30px);
-  padding: clamp(11px, 1.6vh, 13px) clamp(22px, 3vw, 28px);
+  padding: 0 clamp(22px, 3vw, 28px);
   border-radius: 999px;
   background: #fff;
   color: #000;
@@ -833,14 +831,28 @@ button.menu-link { width: 100%; }
 
 .hero-actions {
   display: flex;
-  align-items: center;
+  /*
+   * One row, one height. The primary action is an anchor and the secondary is a
+   * button, so their intrinsic heights differ; centring them left the pair sitting
+   * 8px apart vertically. Stretching makes the taller one set the height for both.
+   */
+  align-items: stretch;
+  flex-wrap: nowrap;
   gap: clamp(10px, 1.4vw, 18px);
   margin-top: clamp(18px, 2.8vh, 30px);
+}
+.cta, .cta-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: clamp(42px, 5.4vh, 50px);
+  white-space: nowrap;
+  line-height: 1;
 }
 
 /* Secondary action: glass rather than a solid fill, so the CTA stays dominant. */
 .cta-ghost {
-  padding: clamp(11px, 1.6vh, 13px) clamp(18px, 2.4vw, 24px);
+  padding: 0 clamp(18px, 2.4vw, 24px);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
@@ -854,7 +866,7 @@ button.menu-link { width: 100%; }
 }
 .cta-ghost:hover {
   background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(126, 231, 135, 0.5);
+  border-color: rgba(255, 255, 255, 0.34);
   transform: translateY(-2px);
 }
 
@@ -994,16 +1006,6 @@ button.menu-link { width: 100%; }
 .backdrop-layer.second { background: rgba(20, 22, 21, 0.9); }
 .backdrop-layer.third  { background: #0d0f0e; border-left: 1px solid rgba(63, 185, 80, 0.22); }
 
-.ambient-background-shapes { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.bg-shape {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  transition: opacity 0.35s var(--ease-out);
-}
-.bg-shape.active { opacity: 1; }
 
 .menu-content-wrapper {
   position: relative;
@@ -1084,19 +1086,36 @@ button.menu-link { width: 100%; }
   /* 0.5 sat just under 4.5:1 on this ground; 0.62 clears it. */
   color: rgba(255, 255, 255, 0.62);
 }
+/*
+ * Hover is a colour change and nothing else.
+ *
+ * Each destination owns a hue, cycled with nth-child so it works for the landing's
+ * five entries and the workstation's eight alike. The label and its index take that
+ * colour and the row picks up a flat tint of it -- no sweep, no bloom, no stagger.
+ */
+.menu-list-item { --item: #56d364; }
+.menu-list-item:nth-child(5n + 2) { --item: #58a6ff; }
+.menu-list-item:nth-child(5n + 3) { --item: #e3b341; }
+.menu-list-item:nth-child(5n + 4) { --item: #bc8cff; }
+.menu-list-item:nth-child(5n + 5) { --item: #ff7b72; }
+
 .nav-link-hover-bg {
   position: absolute;
   inset: 0;
   z-index: -1;
   border-radius: 10px;
-  background: linear-gradient(90deg, rgba(63, 185, 80, 0.16), rgba(63, 185, 80, 0));
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.4s var(--ease-out);
+  background: var(--item);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-out);
 }
 .nav-link:hover .nav-link-hover-bg,
-.nav-link:focus-visible .nav-link-hover-bg { transform: scaleX(1); }
-.nav-link:hover .nav-link-index { color: var(--accent-2, #56d364); }
+.nav-link:focus-visible .nav-link-hover-bg { opacity: 0.09; }
+.nav-link:hover .nav-link-text,
+.nav-link:focus-visible .nav-link-text { color: var(--item); }
+.nav-link:hover .nav-link-index,
+.nav-link:focus-visible .nav-link-index { color: var(--item); }
+.nav-link-text { transition: color 0.2s var(--ease-out); }
+.nav-link-index { transition: color 0.2s var(--ease-out); }
 
 @media (max-width: 620px) {
   .nav-link { grid-template-columns: 2.2rem 1fr; }
@@ -1104,8 +1123,7 @@ button.menu-link { width: 100%; }
 
 @media (prefers-reduced-motion: reduce) {
   .nav-link-hover-bg,
-  .bg-shape { transition: none; }
-}
+  }
 
 
 /* ============================================================================

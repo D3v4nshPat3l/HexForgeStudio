@@ -3,15 +3,13 @@
  *
  * A port of the Sterling Gate navigation pattern to this project's stack -- vanilla
  * TypeScript and GSAP, with no React, Tailwind or shadcn involved. The motion is the
- * same: three backdrop panels sweep in on a stagger, the links rise and unrotate
- * behind their own masks, and hovering an item blooms a matching ambient shape.
+ * same: three backdrop panels sweep in on a stagger and the links rise and unrotate
+ * behind their own masks. Hover is deliberately not part of that -- it is a plain
+ * colour change, handled in CSS.
  *
  * The panels sweep in three dimensions rather than sliding flat -- each arrives on its
  * own rotateY, so the stack reads as depth instead of as sliding rectangles.
  *
- * Ambient shapes are drawn in the product palette rather than the indigo and violet of
- * the original, so the overlay belongs to the same application as the workstation
- * behind it.
  */
 
 import gsap from "gsap";
@@ -36,37 +34,6 @@ export const LANDING_ITEMS: KineticItem[] = [
   { label: "Capabilities", detail: "What it analyses", panel: "capabilities" },
   { label: "Privacy", detail: "Where your bytes go", panel: "privacy" },
   { label: "Launch", detail: "Start a session", href: "#/app" }
-];
-
-/** Ambient shapes, one per item, drawn from the accent, amber and violet tokens. */
-const SHAPES = [
-  '<circle class="shape-element" cx="80" cy="120" r="40" fill="rgba(63,185,80,0.20)"/>' +
-    '<circle class="shape-element" cx="300" cy="80" r="60" fill="rgba(63,185,80,0.13)"/>' +
-    '<circle class="shape-element" cx="200" cy="300" r="80" fill="rgba(163,113,247,0.11)"/>' +
-    '<circle class="shape-element" cx="350" cy="280" r="30" fill="rgba(210,153,34,0.16)"/>',
-
-  '<path class="shape-element" d="M0 200 Q100 100, 200 200 T 400 200" stroke="rgba(63,185,80,0.22)" stroke-width="60" fill="none"/>' +
-    '<path class="shape-element" d="M0 280 Q100 180, 200 280 T 400 280" stroke="rgba(86,211,100,0.15)" stroke-width="40" fill="none"/>',
-
-  '<circle class="shape-element" cx="50" cy="50" r="8" fill="rgba(63,185,80,0.34)"/>' +
-    '<circle class="shape-element" cx="150" cy="50" r="8" fill="rgba(86,211,100,0.30)"/>' +
-    '<circle class="shape-element" cx="250" cy="50" r="8" fill="rgba(210,153,34,0.28)"/>' +
-    '<circle class="shape-element" cx="350" cy="50" r="8" fill="rgba(63,185,80,0.30)"/>' +
-    '<circle class="shape-element" cx="100" cy="150" r="12" fill="rgba(86,211,100,0.26)"/>' +
-    '<circle class="shape-element" cx="200" cy="150" r="12" fill="rgba(163,113,247,0.24)"/>' +
-    '<circle class="shape-element" cx="300" cy="150" r="12" fill="rgba(63,185,80,0.26)"/>' +
-    '<circle class="shape-element" cx="50" cy="250" r="10" fill="rgba(210,153,34,0.26)"/>' +
-    '<circle class="shape-element" cx="150" cy="250" r="10" fill="rgba(63,185,80,0.30)"/>' +
-    '<circle class="shape-element" cx="250" cy="250" r="10" fill="rgba(86,211,100,0.28)"/>' +
-    '<circle class="shape-element" cx="350" cy="250" r="10" fill="rgba(163,113,247,0.26)"/>' +
-    '<circle class="shape-element" cx="200" cy="350" r="6" fill="rgba(63,185,80,0.30)"/>',
-
-  '<path class="shape-element" d="M100 100 Q150 50, 200 100 Q250 150, 200 200 Q150 250, 100 200 Q50 150, 100 100" fill="rgba(63,185,80,0.14)"/>' +
-    '<path class="shape-element" d="M250 200 Q300 150, 350 200 Q400 250, 350 300 Q300 350, 250 300 Q200 250, 250 200" fill="rgba(210,153,34,0.12)"/>',
-
-  '<line class="shape-element" x1="0" y1="100" x2="300" y2="400" stroke="rgba(63,185,80,0.17)" stroke-width="30"/>' +
-    '<line class="shape-element" x1="100" y1="0" x2="400" y2="300" stroke="rgba(86,211,100,0.13)" stroke-width="25"/>' +
-    '<line class="shape-element" x1="200" y1="0" x2="400" y2="200" stroke="rgba(163,113,247,0.11)" stroke-width="20"/>'
 ];
 
 /**
@@ -99,17 +66,8 @@ function markup(items: KineticItem[]): string {
     else if (item.view) open = '<button type="button" class="nav-link" data-view-jump="' + item.view + '">';
     else open = '<a class="nav-link" href="' + item.href + '">';
     const close = item.href && !item.panel && !item.view ? "</a>" : "</button>";
-    // Five shapes cycle across however many destinations a surface declares.
-    const shape = (index % SHAPES.length) + 1;
-    return '<li class="menu-list-item" data-shape="' + shape + '">' + open + inner + close + "</li>";
+    return '<li class="menu-list-item">' + open + inner + close + "</li>";
   }).join("");
-
-  const shapes = SHAPES.map(
-    (body, index) =>
-      '<svg class="bg-shape bg-shape-' + (index + 1) + '" viewBox="0 0 400 400" fill="none" aria-hidden="true">' +
-      body +
-      "</svg>"
-  ).join("");
 
   return (
     '<div class="nav-overlay-wrapper" id="kineticNav" data-nav="closed">' +
@@ -119,7 +77,6 @@ function markup(items: KineticItem[]): string {
     '<div class="backdrop-layer first"></div>' +
     '<div class="backdrop-layer second"></div>' +
     '<div class="backdrop-layer third"></div>' +
-    '<div class="ambient-background-shapes">' + shapes + "</div>" +
     "</div>" +
     '<div class="menu-content-wrapper">' +
     '<p class="menu-eyebrow" data-menu-fade>HexForge Studio</p>' +
@@ -152,7 +109,6 @@ export function startKineticNav(
   const panels = wrapper.querySelectorAll<HTMLElement>(".backdrop-layer");
   const links = wrapper.querySelectorAll<HTMLElement>(".nav-link-text");
   const fades = wrapper.querySelectorAll<HTMLElement>("[data-menu-fade]");
-  const shapesRoot = wrapper.querySelector<HTMLElement>(".ambient-background-shapes")!;
   const triggerTexts = trigger.querySelectorAll<HTMLElement>(".menu-btn-text span");
   const triggerIcon = trigger.querySelector<HTMLElement>(".menu-btn-icon");
 
@@ -239,47 +195,9 @@ export function startKineticNav(
   wrapper.addEventListener("click", onPick);
   window.addEventListener("keydown", onKey);
 
-  // Hover blooms: one ambient shape per item.
-  const cleanups: Array<() => void> = [];
-  if (!reduced) {
-    wrapper.querySelectorAll<HTMLElement>(".menu-list-item[data-shape]").forEach((item) => {
-      const shape = shapesRoot.querySelector<HTMLElement>(".bg-shape-" + item.dataset.shape);
-      if (!shape) return;
-      const elements = shape.querySelectorAll(".shape-element");
-
-      const enter = (): void => {
-        shapesRoot.querySelectorAll(".bg-shape").forEach((other) => other.classList.remove("active"));
-        shape.classList.add("active");
-        gsap.fromTo(
-          elements,
-          { scale: 0.5, opacity: 0, rotation: -10 },
-          { scale: 1, opacity: 1, rotation: 0, duration: 0.6, stagger: 0.08, ease: "back.out(1.7)", overwrite: "auto" }
-        );
-      };
-      const leave = (): void => {
-        gsap.to(elements, {
-          scale: 0.8,
-          opacity: 0,
-          duration: 0.3,
-          ease: "power2.in",
-          overwrite: "auto",
-          onComplete: () => shape.classList.remove("active")
-        });
-      };
-
-      item.addEventListener("mouseenter", enter);
-      item.addEventListener("mouseleave", leave);
-      // Keyboard users get the same bloom as pointer users.
-      item.addEventListener("focusin", enter);
-      item.addEventListener("focusout", leave);
-      cleanups.push(() => {
-        item.removeEventListener("mouseenter", enter);
-        item.removeEventListener("mouseleave", leave);
-        item.removeEventListener("focusin", enter);
-        item.removeEventListener("focusout", leave);
-      });
-    });
-  }
+  // Hover styling is entirely CSS now: a plain colour change per item, cycled with
+  // nth-child. The previous version bloomed a staggered SVG shape behind the list on
+  // every hover, which was more spectacle than a menu needs.
 
   return () => {
     timeline?.kill();
@@ -287,7 +205,6 @@ export function startKineticNav(
     overlay.removeEventListener("click", onOverlay);
     wrapper.removeEventListener("click", onPick);
     window.removeEventListener("keydown", onKey);
-    cleanups.forEach((fn) => fn());
     document.body.classList.remove("menu-open");
     wrapper.remove();
   };
