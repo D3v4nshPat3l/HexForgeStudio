@@ -1092,11 +1092,17 @@ button.menu-link { width: 100%; }
  * Each destination owns a hue, cycled with nth-child so it works for the landing's
  * five entries and the workstation's eight alike. The label and its index take that
  * colour and the row picks up a flat tint of it -- no sweep, no bloom, no stagger.
+ *
+ * The amber and violet are the workstation's own --amber and --violet. The first
+ * pass used a brighter yellow and a pale lavender, which stood apart from the other
+ * three -- the yellow by sheer luminance, the lavender by being washed out rather
+ * than saturated. Taking both from the product palette settles them into the group
+ * and means every colour here already exists elsewhere in the application.
  */
 .menu-list-item { --item: #56d364; }
 .menu-list-item:nth-child(5n + 2) { --item: #58a6ff; }
-.menu-list-item:nth-child(5n + 3) { --item: #e3b341; }
-.menu-list-item:nth-child(5n + 4) { --item: #bc8cff; }
+.menu-list-item:nth-child(5n + 3) { --item: #d29922; }
+.menu-list-item:nth-child(5n + 4) { --item: #a371f7; }
 .menu-list-item:nth-child(5n + 5) { --item: #ff7b72; }
 
 .nav-link-hover-bg {
