@@ -180,10 +180,12 @@ html:has(.landing), body:has(.landing) { height: 100%; overflow: hidden; }
 .site-header {
   flex-shrink: 0;
   width: 100%;
-  max-width: 720px;
+  max-width: 1320px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  /* Logo left, menu trigger right. Every destination now lives in the overlay,
+     so the header carries no duplicate of it. */
+  justify-content: space-between;
   gap: clamp(18px, 2.8vw, 28px);
   animation: slideDown 0.7s var(--ease-out) both;
 }
@@ -258,7 +260,7 @@ html:has(.landing), body:has(.landing) { height: 100%; overflow: hidden; }
 }
 .sign-in:hover { background: #323234; color: #fff; transform: translateY(-1px); }
 
-.burger { display: none; }
+
 
 /* ------------------------------------------------------------------ hero */
 .hero {
@@ -335,10 +337,17 @@ html:has(.landing), body:has(.landing) { height: 100%; overflow: hidden; }
 .headline {
   margin: 0;
   /*
-   * `overflow: hidden` below sets this element's automatic minimum size to 0, so as a
-   * flex item in a short viewport it collapsed to nothing instead of staying legible.
-   * The headline is the one thing that must never be squeezed away.
+   * The entrance animation needs a mask, but `overflow: hidden` here sets this
+   * element's automatic minimum size to 0 -- so under any height pressure the box
+   * shrank below its own two lines and the second line was painted over the
+   * paragraph beneath it. `flex-shrink: 0` only covered the flex path; the wide
+   * layout lays the hero out as a grid, where that property does nothing.
+   *
+   * The mask now lives on each line instead, so this element keeps `overflow:
+   * visible` and its automatic minimum size stays equal to its content in both
+   * layouts. It cannot be squeezed, and descenders are no longer clipped.
    */
+  overflow: visible;
   flex-shrink: 0;
   font-family: var(--font-display);
   font-weight: 400;
@@ -347,13 +356,18 @@ html:has(.landing), body:has(.landing) { height: 100%; overflow: hidden; }
   letter-spacing: -0.04em;
   line-height: 1.12;
   white-space: nowrap;
-  overflow: hidden;
 }
-.headline span {
+.headline .line {
   display: block;
-  opacity: 0;
-  transform: translateY(14px);
-  animation: headlineFade 0.85s var(--ease-out) forwards;
+  overflow: hidden;
+  /* Room for descenders inside the mask, taken back out of the layout. */
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+}
+.headline .line-inner {
+  display: block;
+  transform: translateY(115%);
+  animation: headlineRise 0.95s var(--ease-out) forwards;
   animation-delay: var(--d, 0s);
 }
 
@@ -443,6 +457,10 @@ html:has(.landing), body:has(.landing) { height: 100%; overflow: hidden; }
   70% { opacity: 1; transform: translateY(0) scale(1.03); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
+@keyframes headlineRise {
+  to { transform: translateY(0); }
+}
+
 @keyframes headlineFade {
   to { opacity: 1; transform: translateY(0); }
 }
@@ -537,34 +555,9 @@ html:has(.landing), body:has(.landing) { height: 100%; overflow: hidden; }
 }
 
 @media (max-width: 720px) {
-  .nav-pill, .sign-in { display: none; }
+
   .site-header { justify-content: space-between; max-width: none; }
   .logo { width: 48px; height: 48px; }
-  .burger {
-    display: grid;
-    place-content: center;
-    gap: 4px;
-    width: 48px;
-    height: 48px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: var(--pill-dark);
-    cursor: pointer;
-    transition: background 0.25s var(--ease-out);
-  }
-  .burger span {
-    display: block;
-    width: 18px;
-    height: 1.5px;
-    background: #fff;
-    transition: transform 0.3s var(--ease-out), opacity 0.2s, background 0.25s;
-  }
-  .burger[aria-expanded="true"] { background: #fff; }
-  .burger[aria-expanded="true"] span { background: #000; }
-  .burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
-  .burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
-  .burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
 
   .headline { letter-spacing: -0.08em; line-height: 1.05; }
   .stats { grid-template-columns: repeat(2, 1fr); gap: clamp(12px, 3vw, 20px); }
@@ -585,7 +578,7 @@ html:has(.landing), body:has(.landing) { height: 100%; overflow: hidden; }
 body.menu-open { overflow: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
-  .anim, .anim-pulse, .headline span, .site-header,
+  .anim, .anim-pulse, .headline .line-inner, .site-header,
   .menu-sheet, .menu-link, .menu-signin, .menu-overlay {
     animation: none !important;
     opacity: 1 !important;
@@ -980,4 +973,205 @@ button.menu-link { width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   .showpiece-slab { transform: none !important; transition: none; }
   .showpiece-rows code, .showpiece-bars i { animation: none; }
+}
+
+
+/* ============================================================================
+   Kinetic navigation overlay
+   A port of the Sterling Gate pattern: three backdrop panels sweep in on a
+   stagger, links rise behind their own masks, ambient shapes bloom on hover.
+   Panels arrive on their own rotateY, so the stack reads as depth.
+   Timing and transforms are driven by GSAP in kinetic-nav.ts; this file owns
+   only the static appearance and the resting state.
+   ========================================================================= */
+
+.nav-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 8px 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.25s var(--ease-out), border-color 0.25s var(--ease-out);
+}
+.nav-menu-btn:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.3); }
+.nav-menu-btn:focus-visible { outline: 2px solid var(--accent, #3fb950); outline-offset: 3px; }
+
+/* Two stacked labels inside a one-line mask; GSAP slides the pair. */
+.menu-btn-text {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  height: 1.25em;
+  line-height: 1.25em;
+}
+.menu-btn-text span { display: block; height: 1.25em; }
+
+.menu-btn-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.menu-btn-icon svg { width: 11px; height: 11px; display: block; }
+
+/* `data-nav` owns visibility so the overlay never waits on an animation frame. */
+.nav-overlay-wrapper {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+.nav-overlay-wrapper[data-nav="open"] { display: block; }
+.nav-overlay-wrapper .overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 6, 5, 0.6);
+  backdrop-filter: blur(6px);
+  visibility: hidden;
+  opacity: 0;
+}
+/*
+ * The open state is described here as well as animated. GSAP writes inline
+ * transforms that take over while a timeline runs, but if it never ticks -- a
+ * backgrounded tab, a stalled ticker, a failed chunk -- the menu still opens and is
+ * usable. Motion is an enhancement; reachability is not.
+ */
+.nav-overlay-wrapper[data-nav="open"] .overlay { visibility: visible; opacity: 1; }
+.nav-overlay-wrapper[data-nav="open"] .menu-content { transform: translateX(0); }
+.nav-overlay-wrapper[data-nav="open"] .backdrop-layer { transform: none; }
+
+.menu-content {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(680px, 100%);
+  display: flex;
+  /* Perspective on the container is what makes the panels' rotateY read as depth. */
+  perspective: 1400px;
+  transform: translateX(120%);
+}
+
+.menu-bg { position: absolute; inset: 0; transform-style: preserve-3d; }
+.backdrop-layer {
+  position: absolute;
+  inset: 0;
+  transform-origin: right center;
+  backface-visibility: hidden;
+}
+.backdrop-layer.first  { background: rgba(63, 185, 80, 0.16); }
+.backdrop-layer.second { background: rgba(20, 22, 21, 0.9); }
+.backdrop-layer.third  { background: #0d0f0e; border-left: 1px solid rgba(63, 185, 80, 0.22); }
+
+.ambient-background-shapes { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.bg-shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.35s var(--ease-out);
+}
+.bg-shape.active { opacity: 1; }
+
+.menu-content-wrapper {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(18px, 3vh, 34px);
+  width: 100%;
+  padding: clamp(28px, 6vw, 76px);
+  overflow-y: auto;
+}
+
+.menu-eyebrow,
+.menu-foot {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+.menu-foot { text-transform: none; letter-spacing: 0.01em; font-size: 13px; }
+
+.menu-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.menu-list-item { position: relative; }
+
+.nav-link {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3rem 1fr;
+  grid-template-areas: "index label" ".     detail";
+  align-items: baseline;
+  column-gap: clamp(10px, 2vw, 18px);
+  row-gap: 2px;
+  width: 100%;
+  padding: clamp(10px, 1.6vh, 16px) clamp(10px, 2vw, 20px);
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.nav-link:focus-visible { outline: 2px solid var(--accent, #3fb950); outline-offset: 2px; }
+
+.nav-link-index {
+  grid-area: index;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: rgba(63, 185, 80, 0.9);
+}
+/* The mask is what lets the label rise from nothing without clipping the row. */
+.nav-link-mask { grid-area: label; display: block; overflow: hidden; padding-bottom: 0.12em; margin-bottom: -0.12em; }
+.nav-link-text {
+  display: block;
+  font-family: var(--font-display, inherit);
+  font-size: clamp(30px, 5.4vw, 60px);
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+.nav-link-detail {
+  grid-area: detail;
+  font-size: 13px;
+  /* 0.5 sat just under 4.5:1 on this ground; 0.62 clears it. */
+  color: rgba(255, 255, 255, 0.62);
+}
+.nav-link-hover-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(63, 185, 80, 0.16), rgba(63, 185, 80, 0));
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.4s var(--ease-out);
+}
+.nav-link:hover .nav-link-hover-bg,
+.nav-link:focus-visible .nav-link-hover-bg { transform: scaleX(1); }
+.nav-link:hover .nav-link-index { color: var(--accent-2, #56d364); }
+
+@media (max-width: 620px) {
+  .nav-link { grid-template-columns: 2.2rem 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-link-hover-bg,
+  .bg-shape { transition: none; }
 }

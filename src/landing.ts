@@ -181,10 +181,14 @@ export function renderLanding(): string {
     <div class="page">
       <header class="site-header">
         <a class="logo" href="#/" aria-label="HexForge Studio">${BRAND_MARK}</a>
-        <nav class="nav-pill" aria-label="Primary">${navMarkup("nav-link")}</nav>
-        <a class="sign-in" href="#/app">Launch</a>
-        <button type="button" class="burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
-          <span></span><span></span><span></span>
+        <button type="button" class="nav-menu-btn" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="kineticNav">
+          <span class="menu-btn-text"><span>Menu</span><span>Close</span></span>
+          <span class="menu-btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" fill="none" width="100%">
+              <path d="M7.33333 16L7.33333 0L8.66667 0L8.66667 16L7.33333 16Z" fill="currentColor"></path>
+              <path d="M16 8.66667L0 8.66667L0 7.33333L16 7.33333L16 8.66667Z" fill="currentColor"></path>
+            </svg>
+          </span>
         </button>
       </header>
 
@@ -197,8 +201,8 @@ export function renderLanding(): string {
         </div>
 
         <h1 class="headline">
-          <span style="--d:.12s">Every Byte</span>
-          <span style="--d:.30s">Under Scrutiny</span>
+          <span class="line"><span class="line-inner" style="--d:.12s">Every Byte</span></span>
+          <span class="line"><span class="line-inner" style="--d:.30s">Under Scrutiny</span></span>
         </h1>
 
         <p class="subhead anim" style="--d:.28s">
@@ -245,12 +249,6 @@ export function renderLanding(): string {
             <span class="stat-label">${stat.label}</span>
           </div>`).join("")}
       </footer>
-    </div>
-
-    <div class="menu-overlay" id="menuOverlay" hidden></div>
-    <div class="menu-sheet" id="mobileMenu" hidden>
-      ${navMarkup("menu-link")}
-      <a class="menu-signin" href="#/app">Launch Workstation</a>
     </div>
 
     ${panels()}

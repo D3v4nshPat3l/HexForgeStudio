@@ -1,7 +1,8 @@
 import "./styles.css";
 import "./landing.css";
 import { renderLanding } from "./landing";
-import { bindMobileMenu, bindPanels, startBackground, startCounters, startParallax, startSpotlight } from "./ambient";
+import { bindPanels, startBackground, startCounters, startParallax, startSpotlight } from "./ambient";
+import { startKineticNav } from "./kinetic-nav";
 import { applyTheme, resolveInitialTheme, toggleTheme, type ThemeName } from "./theme";
 
 /**
@@ -48,7 +49,9 @@ function showLanding(): void {
   const stats = mount.querySelector<HTMLElement>("#stats");
   if (surface) {
     const stopField = startBackground(surface);
-    const stopMenu = bindMobileMenu(surface);
+    const trigger = surface.querySelector<HTMLElement>("#burger");
+    // The kinetic overlay replaces the old slide-down sheet at every width.
+    const stopMenu = trigger ? startKineticNav(surface, trigger) : () => {};
     const stopPanels = bindPanels(surface);
     const stopParallax = startParallax(surface);
     const stopCounters = stats ? startCounters(stats) : () => {};
