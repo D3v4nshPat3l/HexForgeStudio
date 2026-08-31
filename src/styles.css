@@ -59,6 +59,10 @@
   --panel-hi: #26272a;
   --surface-grid: #0c0c0d;
   --surface-row: #121213;
+  /* Translucent variants, used only while a file is open so the rain field shows
+     through. Derived per theme -- a fixed dark value here inverted the light grid. */
+  --grid-veil: rgba(12, 12, 13, 0.78);
+  --row-veil: rgba(18, 18, 19, 0.76);
 
   --line: #232427;
   --line-soft: #1b1c1e;
@@ -117,6 +121,10 @@
   --panel-hi: #e3e3df;
   --surface-grid: #ffffff;
   --surface-row: #fafaf7;
+  /* The light console keeps solid surfaces: the rain is a dark-ground effect and is
+     not shown here, so there is nothing to let through. */
+  --grid-veil: #ffffff;
+  --row-veil: #fafaf7;
 
   --line: #dcdcd7;
   --line-soft: #e8e8e3;
@@ -2272,10 +2280,10 @@ textarea.injector-source {
  */
 .studio-shell.has-file .hex-grid,
 .studio-shell.has-file .hex-rows,
-.studio-shell.has-file .hex-head { background-color: rgba(12, 12, 13, 0.86); }
+.studio-shell.has-file .hex-head { background-color: var(--grid-veil); }
 .studio-shell.has-file .hex-row:nth-child(2n),
 .studio-shell.has-file .hex-row:nth-child(2n) .row-offset,
-.studio-shell.has-file .hex-row:nth-child(2n) .ascii-cells { background-color: rgba(18, 18, 19, 0.82); }
+.studio-shell.has-file .hex-row:nth-child(2n) .ascii-cells { background-color: var(--row-veil); }
 .center-workspace { position: relative; }
 .center-workspace > *:not(.rain-field):not(.constellation-mesh) { position: relative; z-index: 1; }
 
@@ -2488,8 +2496,13 @@ textarea.injector-source {
  */
 .center-workspace .rain-field { opacity: 1; }
 /* Kept running with a file open rather than hidden, just well back. */
-.studio-shell.has-file .center-workspace .rain-field { opacity: 0.55; }
-:root[data-theme="light"] .center-workspace .rain-field { opacity: 0.2; }
+.studio-shell.has-file .center-workspace .rain-field { opacity: 0.7; }
+/*
+ * Not shown in the light console. The field is a black ground whose streaks are made
+ * by over-brightening what shows through it -- on a light surface that reads as a dark
+ * smear rather than as rain, and it drags the panel grey.
+ */
+:root[data-theme="light"] .center-workspace .rain-field { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .rain-field { animation: none; }
