@@ -81,3 +81,15 @@ Used for the navigation overlay's entrance, the hero headline's character reveal
 the magnetic call-to-action buttons. SplitText and the other former Club plugins ship
 free under the standard license from 3.13 onward. The license permits use in a site or
 application that is not itself sold as a competing animation tool, which this is not.
+
+--------------------------------------------------------------------------------
+CSS rain background ("css-rain-bg")
+by SelfMadeSystem, via Uiverse.io -- https://uiverse.io/SelfMadeSystem
+A fuller version: https://shenanigans.shoghisimon.ca/collection/css-rain-bg/
+Licensed MIT.
+
+Used behind the workstation's centre panel. The 36 gradients, their tile sizes and the
+two keyframe position sets are as published, generated from the source values rather
+than transcribed by hand. The streak colour reads from a custom property so it can
+follow the product's palette, and the layer is held well back because it sits behind
+data rather than behind a headline.

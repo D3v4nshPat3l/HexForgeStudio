@@ -1,7 +1,6 @@
 import { BRAND_MARK } from "./brand";
 import { startKineticNav, WORKSTATION_ITEMS } from "./kinetic-nav";
 import { startConstellation } from "./constellation";
-import { startMatrixField } from "./matrix-field";
 import { bindOriginButtons } from "./ui/origin-button";
 import { renderByteForge } from "./ui/byte-forge";
 import { headerLabel } from "./ui/forge-button";
@@ -242,7 +241,7 @@ const SHELL_HTML = `
     <div class="rail-resizer" id="resizeLeft" role="separator" aria-orientation="vertical"
       aria-label="Resize the file navigator panel" tabindex="0"></div>
     <section class="center-workspace">
-      <div class="jp-matrix studio-matrix" id="studioMatrix" aria-hidden="true"></div>
+      <div class="rain-field" aria-hidden="true"></div>
       <canvas class="constellation-mesh" aria-hidden="true"></canvas>
       <div class="view-content" id="viewContent"></div>
     </section>
@@ -2165,11 +2164,8 @@ export function mountWorkstation(root: HTMLDivElement): void {
   stopStudioMesh?.();
   const mesh = document.querySelector<HTMLCanvasElement>(".constellation-mesh");
   const meshHost = document.querySelector<HTMLElement>(".center-workspace");
-  const stopMesh = mesh && meshHost ? startConstellation(mesh, meshHost) : () => {};
-  // The landing's katakana field, behind the editor at a fraction of its brightness.
-  const studioMatrix = document.querySelector<HTMLElement>("#studioMatrix");
-  const stopMatrix = studioMatrix ? startMatrixField(studioMatrix) : () => {};
-  stopStudioMesh = () => { stopMesh(); stopMatrix(); };
+  // The rain field behind it is pure CSS and needs no driver.
+  stopStudioMesh = mesh && meshHost ? startConstellation(mesh, meshHost) : null;
 
   stopStudioOrigin?.();
   // The two header bars now use the same treatment as the Menu button rather than a

@@ -2245,49 +2245,232 @@ textarea.injector-source {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.85;
+  /* The rain field is the background now; the mesh sits over it only to answer the
+     pointer, so it is held back rather than competing for the same surface. */
+  opacity: 0.4;
   transition: opacity 0.4s var(--ease);
 }
 .studio-shell.has-file .constellation-mesh { opacity: 0; }
 
 /*
- * The landing's katakana field, carried into the editor.
+ * The view fills its panel with an opaque ground, which sits directly over both
+ * background layers. While no file is open it goes transparent so they are visible;
+ * the panel behind supplies the same colour, so nothing else changes. With a file open
+ * the ground returns and the byte grid is read against a flat surface.
  *
- * Held far below its brightness on the landing, because here it sits behind data an
- * analyst is reading rather than behind a headline. It dims further once a file is
- * open, when the byte grid becomes the thing that matters, and it is never allowed to
- * catch the eye ahead of the hex.
- */
-/* Doubled up on purpose: `.jp-matrix` sets opacity too and its stylesheet loads after
-   this one, so a single class here would lose the tie on source order. */
-.jp-matrix.studio-matrix {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.16;
-  font-size: 26px;
-  transition: opacity 0.4s var(--ease);
-}
-.studio-shell.has-file .jp-matrix.studio-matrix { opacity: 0.06; }
-
-:root[data-theme="light"] .jp-matrix.studio-matrix { opacity: 0.1; }
-:root[data-theme="light"] .studio-shell.has-file .jp-matrix.studio-matrix { opacity: 0.04; }
-
-@media (prefers-reduced-motion: reduce) {
-  .studio-matrix > span { animation: none !important; }
-}
-/*
- * The view fills its panel with an opaque ground, which sat directly over the mesh.
- * While no file is open it goes transparent and the panel behind supplies exactly the
- * same colour, so the mesh is visible and nothing else changes. With a file open the
- * ground returns and the mesh is off anyway.
+ * This was lost once already when the katakana layer was removed, which is what left
+ * the rain field painting behind an opaque panel and therefore invisible.
  */
 .studio-shell:not(.has-file) .view-content,
 .studio-shell:not(.has-file) .hex-view { background: transparent; }
 .center-workspace { position: relative; }
-.center-workspace > *:not(.constellation-mesh) { position: relative; z-index: 1; }
+.center-workspace > *:not(.rain-field):not(.constellation-mesh) { position: relative; z-index: 1; }
+
+/* ============================================================================
+   Rain field
+   ----------------------------------------------------------------------------
+   The Uiverse "css-rain-bg" by SelfMadeSystem, sitting behind the workspace.
+
+   The published version paints 36 gradients and animates their positions, then
+   lays a dotted mask over the top whose backdrop-filter blurs and over-brightens
+   what shows through, cycling the hue. The gradients and timings are as
+   published; the colour is taken from a custom property so it can follow the
+   product's accent, and the whole layer is held well back because it sits behind
+   data rather than behind a headline.
+   ========================================================================= */
+
+.rain-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  --rain-c: #2ea8ff;
+  background-color: #000;
+  background-image:
+    radial-gradient(4px 100px at 0px 235px, var(--rain-c), #0000),
+    radial-gradient(4px 100px at 300px 235px, var(--rain-c), #0000),
+    radial-gradient(1.5px 1.5px at 150px 117.5px, var(--rain-c) 100%, #0000 150%),
+    radial-gradient(4px 100px at 0px 252px, var(--rain-c), #0000),
+    radial-gradient(4px 100px at 300px 252px, var(--rain-c), #0000),
+    radial-gradient(1.5px 1.5px at 150px 126px, var(--rain-c) 100%, #0000 150%),
+    radial-gradient(4px 100px at 0px 150px, var(--rain-c), #0000),
+    radial-gradient(4px 100px at 300px 150px, var(--rain-c), #0000),
+    radial-gradient(1.5px 1.5px at 150px 75px, var(--rain-c) 100%, #0000 150%),
+    radial-gradient(4px 100px at 0px 253px, var(--rain-c), #0000),
+    radial-gradient(4px 100px at 300px 253px, var(--rain-c), #0000),
+    radial-gradient(1.5px 1.5px at 150px 126.5px, var(--rain-c) 100%, #0000 150%),
+    radial-gradient(4px 100px at 0px 204px, var(--rain-c), #0000),
+    radial-gradient(4px 100px at 300px 204px, var(--rain-c), #0000),
+    radial-gradient(1.5px 1.5px at 150px 102px, var(--rain-c) 100%, #0000 150%),
+    radial-gradient(4px 100px at 0px 134px, var(--rain-c), #0000),
+    radial-gradient(4px 100px at 300px 134px, var(--rain-c), #0000),
+    radial-gradient(1.5px 1.5px at 150px 67px, var(--rain-c) 100%, #0000 150%),
+    radial-gradient(4px 100px at 0px 179px, var(--rain-c), #0000),
+    radial-gradient(4px 100px at 300px 179px, var(--rain-c), #0000),
+    radial-gradient(1.5px 1.5px at 150px 89.5px, var(--rain-c) 100%, #0000 150%),
+    radial-gradient(4px 100px at 0px 299px, var(--rain-c), #0000),
+    radial-gradient(4px 100px at 300px 299px, var(--rain-c), #0000),
+    radial-gradient(1.5px 1.5px at 150px 149.5px, var(--rain-c) 100%, #0000 150%),
+    radial-gradient(4px 100px at 0px 215px, var(--rain-c), #0000),
+    radial-gradient(4px 100px at 300px 215px, var(--rain-c), #0000),
+    radial-gradient(1.5px 1.5px at 150px 107.5px, var(--rain-c) 100%, #0000 150%),
+    radial-gradient(4px 100px at 0px 281px, var(--rain-c), #0000),
+    radial-gradient(4px 100px at 300px 281px, var(--rain-c), #0000),
+    radial-gradient(1.5px 1.5px at 150px 140.5px, var(--rain-c) 100%, #0000 150%),
+    radial-gradient(4px 100px at 0px 158px, var(--rain-c), #0000),
+    radial-gradient(4px 100px at 300px 158px, var(--rain-c), #0000),
+    radial-gradient(1.5px 1.5px at 150px 79px, var(--rain-c) 100%, #0000 150%),
+    radial-gradient(4px 100px at 0px 210px, var(--rain-c), #0000),
+    radial-gradient(4px 100px at 300px 210px, var(--rain-c), #0000),
+    radial-gradient(1.5px 1.5px at 150px 105px, var(--rain-c) 100%, #0000 150%);
+  background-size:
+    300px 235px,
+    300px 235px,
+    300px 235px,
+    300px 252px,
+    300px 252px,
+    300px 252px,
+    300px 150px,
+    300px 150px,
+    300px 150px,
+    300px 253px,
+    300px 253px,
+    300px 253px,
+    300px 204px,
+    300px 204px,
+    300px 204px,
+    300px 134px,
+    300px 134px,
+    300px 134px,
+    300px 179px,
+    300px 179px,
+    300px 179px,
+    300px 299px,
+    300px 299px,
+    300px 299px,
+    300px 215px,
+    300px 215px,
+    300px 215px,
+    300px 281px,
+    300px 281px,
+    300px 281px,
+    300px 158px,
+    300px 158px,
+    300px 158px,
+    300px 210px,
+    300px 210px,
+    300px 210px;
+  animation: rain-fall 150s linear infinite;
+}
+
+.rain-field::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-image: radial-gradient(circle at 50% 50%, #0000 0, #0000 2px, hsl(0 0 4%) 2px);
+  background-size: 8px 8px;
+  --f: blur(1em) brightness(6);
+  animation: rain-hue 10s linear infinite;
+}
+
+@keyframes rain-fall {
+  0% {
+    background-position:
+      0px 220px,
+      3px 220px,
+      151.5px 337.5px,
+      25px 24px,
+      28px 24px,
+      176.5px 141.5px,
+      50px 16px,
+      53px 16px,
+      201.5px 133.5px,
+      75px 224px,
+      78px 224px,
+      226.5px 341.5px,
+      100px 19px,
+      103px 19px,
+      251.5px 136.5px,
+      125px 120px,
+      128px 120px,
+      276.5px 237.5px,
+      150px 31px,
+      153px 31px,
+      301.5px 148.5px,
+      175px 235px,
+      178px 235px,
+      326.5px 352.5px,
+      200px 121px,
+      203px 121px,
+      351.5px 238.5px,
+      225px 224px,
+      228px 224px,
+      376.5px 341.5px,
+      250px 26px,
+      253px 26px,
+      401.5px 143.5px,
+      275px 75px,
+      278px 75px,
+      426.5px 192.5px;
+  }
+  to {
+    background-position:
+      0px 6800px,
+      3px 6800px,
+      151.5px 6917.5px,
+      25px 13632px,
+      28px 13632px,
+      176.5px 13749.5px,
+      50px 5416px,
+      53px 5416px,
+      201.5px 5533.5px,
+      75px 17175px,
+      78px 17175px,
+      226.5px 17292.5px,
+      100px 5119px,
+      103px 5119px,
+      251.5px 5236.5px,
+      125px 8428px,
+      128px 8428px,
+      276.5px 8545.5px,
+      150px 9876px,
+      153px 9876px,
+      301.5px 9993.5px,
+      175px 13391px,
+      178px 13391px,
+      326.5px 13508.5px,
+      200px 14741px,
+      203px 14741px,
+      351.5px 14858.5px,
+      225px 18770px,
+      228px 18770px,
+      376.5px 18887.5px,
+      250px 5082px,
+      253px 5082px,
+      401.5px 5199.5px,
+      275px 6375px,
+      278px 6375px,
+      426.5px 6492.5px;
+  }
+}
+
+@keyframes rain-hue {
+  0% { backdrop-filter: var(--f) hue-rotate(0deg); }
+  to { backdrop-filter: var(--f) hue-rotate(360deg); }
+}
+
+/*
+ * Held back hard. At full strength this is a lightbox behind a hex dump; the byte
+ * grid has to stay the brightest thing on screen. It fades further once a file is
+ * open, when the grid is what matters.
+ */
+.center-workspace .rain-field { opacity: 0.5; }
+.studio-shell.has-file .center-workspace .rain-field { opacity: 0.22; }
+:root[data-theme="light"] .center-workspace .rain-field { opacity: 0.16; }
 
 @media (prefers-reduced-motion: reduce) {
-  .constellation-mesh { display: none; }
+  .rain-field, .rain-field::after { animation: none; }
+  .rain-field::after { backdrop-filter: blur(1em) brightness(6); }
 }
