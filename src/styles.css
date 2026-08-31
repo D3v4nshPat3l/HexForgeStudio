@@ -99,9 +99,9 @@
   --glow: 0 0 0 1px var(--accent-line), 0 0 calc(var(--u) * 5) rgba(63, 185, 80, 0.20);
 
   --header-grad: #101011;
-  --scroll-thumb: #2c3f54;
-  --scroll-thumb-hover: #3d5670;
-  --scroll-track: #0b121b;
+  --scroll-thumb: #2f3a33;
+  --scroll-thumb-hover: #435046;
+  --scroll-track: #0f1210;
 }
 
 /* --------------------------------------------------------------- light theme */
@@ -148,9 +148,9 @@
   --glow: 0 0 0 1px var(--accent-line);
 
   --header-grad: #f4f4f1;
-  --scroll-thumb: #a3b6c8;
-  --scroll-thumb-hover: #7e97af;
-  --scroll-track: #e3ebf2;
+  --scroll-thumb: #b3bdb4;
+  --scroll-thumb-hover: #94a096;
+  --scroll-track: #e6eae5;
 
   --accent: #15672c;
   --accent-2: #15672c;
@@ -759,7 +759,7 @@ button.subtle:hover:not(:disabled) { background: var(--accent-wash); color: var(
   width: clamp(60px, 4.6vw, 110px);
   height: clamp(60px, 4.6vw, 110px);
   margin-bottom: calc(var(--u) * 2.5);
-  filter: drop-shadow(0 0 calc(var(--u) * 5) rgba(53, 167, 240, 0.3));
+  filter: drop-shadow(0 0 calc(var(--u) * 5) var(--accent-line));
 }
 .empty-file-logo svg { width: 100%; height: 100%; }
 .empty-file-card h2 { margin: calc(var(--u) * 2) 0; font-size: var(--fs-lg); color: var(--text-strong); }
@@ -2185,3 +2185,85 @@ textarea.injector-source {
 
 /* A view tab with nothing to report for the open file. */
 .view-tab.tab-hidden { display: none; }
+
+
+/* ============================================================================
+   Depth
+   The workstation reads as stacked planes rather than flat regions: an edge
+   highlight where light would catch the top of a raised surface, a graded shadow
+   under it, and a small lift on hover for the things that respond to a pointer.
+   Elevation is a token set so the two themes stay consistent -- a dark surface is
+   lifted by light on its edge, a light one by shadow beneath it.
+   The byte grid is deliberately excluded. Depth on dense hex costs legibility and
+   frames, and it is the one surface that must stay flat and sharp.
+   ========================================================================= */
+
+:root {
+  --edge-hi: rgba(255, 255, 255, 0.07);
+  --edge-lo: rgba(0, 0, 0, 0.5);
+  --plane-1: 0 1px 0 var(--edge-hi) inset, 0 calc(var(--u) * 0.6) calc(var(--u) * 2.4) rgba(0, 0, 0, 0.4);
+  --plane-2: 0 1px 0 var(--edge-hi) inset, 0 calc(var(--u) * 2) calc(var(--u) * 6) rgba(0, 0, 0, 0.48);
+  --plane-3: 0 1px 0 var(--edge-hi) inset, 0 calc(var(--u) * 4) calc(var(--u) * 12) rgba(0, 0, 0, 0.55);
+  --plane-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 42%);
+}
+
+:root[data-theme="light"] {
+  --edge-hi: rgba(255, 255, 255, 0.9);
+  --edge-lo: rgba(31, 54, 78, 0.14);
+  --plane-1: 0 1px 0 var(--edge-hi) inset, 0 1px 2px rgba(31, 54, 78, 0.09);
+  --plane-2: 0 1px 0 var(--edge-hi) inset, 0 calc(var(--u) * 1.2) calc(var(--u) * 4) rgba(31, 54, 78, 0.12);
+  --plane-3: 0 1px 0 var(--edge-hi) inset, 0 calc(var(--u) * 3) calc(var(--u) * 9) rgba(24, 46, 70, 0.16);
+  --plane-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 46%);
+}
+
+/* The three standing panels are the deepest plane in the workspace. */
+.left-rail, .right-rail, .center-workspace {
+  position: relative;
+  background-image: var(--plane-sheen);
+  box-shadow: var(--plane-3);
+}
+/* The sheen sits above the panel fill but below its contents. */
+.left-rail > *, .right-rail > *, .center-workspace > * { position: relative; }
+
+.brand-header { box-shadow: var(--plane-2); z-index: 2; }
+.command-bar { position: relative; box-shadow: var(--plane-1); z-index: 1; }
+
+/* Raised tiles inside the panels. */
+.metrics article {
+  border: 1px solid var(--line-soft);
+  background-image: var(--plane-sheen);
+  box-shadow: var(--plane-1);
+  transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+.metrics article:hover { transform: translateY(-2px); box-shadow: var(--plane-2); }
+
+/*
+ * The empty state is the one large focal object in the workspace, so it gets real
+ * perspective: the card sits on a receding plane and lifts toward the pointer.
+ */
+.center-workspace:has(.empty-file-card) { perspective: 1100px; }
+.empty-file-card {
+  border-style: solid;
+  border-color: var(--line);
+  background-image: var(--plane-sheen);
+  box-shadow: var(--plane-3);
+  transform: rotateX(1.6deg);
+  transform-origin: center bottom;
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
+}
+.empty-file-card:hover {
+  transform: rotateX(0deg) translateY(calc(var(--u) * -0.8));
+  box-shadow: var(--plane-3), 0 0 calc(var(--u) * 10) var(--accent-wash);
+}
+
+/*
+ * The byte grid gets no depth, which needs no rule: none of the selectors above
+ * reach inside it. A blanket reset here looked like cheap insurance and was not --
+ * being last, it beat the grid's own box-shadows and silently removed the
+ * focus-visible ring, the selected-byte ring and the amber patched-byte marker.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  .metrics article, .empty-file-card { transition: none; }
+  .empty-file-card { transform: none; }
+}
