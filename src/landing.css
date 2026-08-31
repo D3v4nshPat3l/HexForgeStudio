@@ -167,13 +167,22 @@ html:has(.landing), body:has(.landing) { height: 100%; overflow: hidden; }
 .page {
   position: relative;
   z-index: 2;
-  height: 100vh;
-  height: 100dvh;
+  /*
+   * A fixed 100dvh with `overflow: hidden` is what produced the collisions. Content
+   * taller than the viewport had nowhere to go, and the centred hero overflowed in
+   * both directions at once -- up into the header, where the slab met the menu
+   * button, and down into the stats, where the buttons met the counters.
+   *
+   * `min-height` keeps the full-screen composition whenever it fits, which is the
+   * usual case, and lets a genuinely short window scroll instead of overlapping.
+   */
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: clamp(16px, 2.4vh, 28px) clamp(14px, 3vw, 32px);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* ---------------------------------------------------------------- header */
@@ -271,8 +280,10 @@ html:has(.landing), body:has(.landing) { height: 100%; overflow: hidden; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* `safe` keeps an overflowing column from spilling past both edges at once. */
+  justify-content: safe center;
   text-align: center;
+  padding: clamp(8px, 1.6vh, 20px) 0;
 }
 
 /* Trust row */
@@ -854,7 +865,7 @@ button.menu-link { width: 100%; }
     align-items: center;
     /* Row gap replaces the children's own margins, which stacked up and pushed the
        call to action down into the stats row. */
-    align-content: center;
+    align-content: safe center;
     row-gap: clamp(10px, 1.6vh, 20px);
     column-gap: clamp(28px, 4vw, 64px);
     max-width: min(1280px, 94vw);
@@ -882,6 +893,19 @@ button.menu-link { width: 100%; }
   pointer-events: none;
 }
 @media (min-width: 1200px) { .showpiece { display: block; } }
+
+/*
+ * Below this height the two-column composition stops fitting, and the slab is the
+ * piece with the most give -- it is illustrative, while the copy and controls are not.
+ */
+@media (max-height: 820px) {
+  .showpiece-slab { transform: scale(0.86); transform-origin: center right; }
+  .headline { font-size: clamp(26px, 5vw, 58px); }
+}
+@media (max-height: 680px) {
+  .showpiece { display: none; }
+  .hero { max-width: 900px; }
+}
 
 .showpiece-slab {
   border: 1px solid rgba(255, 255, 255, 0.14);
