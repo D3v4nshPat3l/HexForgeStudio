@@ -2247,7 +2247,7 @@ textarea.injector-source {
   pointer-events: none;
   /* The rain field is the background now; the mesh sits over it only to answer the
      pointer, so it is held back rather than competing for the same surface. */
-  opacity: 0.4;
+  opacity: 0.28;
   transition: opacity 0.4s var(--ease);
 }
 .studio-shell.has-file .constellation-mesh { opacity: 0; }
@@ -2466,9 +2466,20 @@ textarea.injector-source {
  * grid has to stay the brightest thing on screen. It fades further once a file is
  * open, when the grid is what matters.
  */
-.center-workspace .rain-field { opacity: 0.5; }
-.studio-shell.has-file .center-workspace .rain-field { opacity: 0.22; }
-:root[data-theme="light"] .center-workspace .rain-field { opacity: 0.16; }
+/*
+ * Full strength while the workspace is empty.
+ *
+ * The effect's whole character is the brightness(6) in that backdrop-filter, so
+ * fading the layer mutes the one thing that makes it read as rain rather than as a
+ * dot grid -- at half opacity it looked like static texture. There is nothing to
+ * compete with here, so it runs as published.
+ *
+ * With a file open it drops hard: the byte grid must be the brightest thing on
+ * screen, and the grid paints its own ground over this anyway.
+ */
+.center-workspace .rain-field { opacity: 1; }
+.studio-shell.has-file .center-workspace .rain-field { opacity: 0.28; }
+:root[data-theme="light"] .center-workspace .rain-field { opacity: 0.2; }
 
 @media (prefers-reduced-motion: reduce) {
   .rain-field, .rain-field::after { animation: none; }
