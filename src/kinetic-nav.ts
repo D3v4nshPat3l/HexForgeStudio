@@ -14,8 +14,9 @@
 
 import gsap from "gsap";
 import { CustomEase } from "gsap/CustomEase";
+import { SplitText } from "gsap/SplitText";
 
-gsap.registerPlugin(CustomEase);
+gsap.registerPlugin(CustomEase, SplitText);
 
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -115,6 +116,21 @@ export function startKineticNav(
   const duration = reduced ? 0.001 : 0.7;
   let open = false;
   let timeline: gsap.core.Timeline | null = null;
+  let watchdog = 0;
+
+  /*
+   * Entry labels resolve character by character, like the hero headline.
+   *
+   * Tuned down rather than copied across. Characters start faintly visible instead of
+   * fully transparent, so the reveal is a brightening rather than a flash against a
+   * dark panel, and they travel a third of their height with no rotation. A menu is
+   * read immediately after it opens; a high-contrast pop on every entry is tiring in a
+   * way the same effect on one headline is not.
+   */
+  const splits = reduced
+    ? []
+    : [...links].map((label) => new SplitText(label, { type: "chars" }));
+  const chars = splits.map((split) => split.chars);
 
   function setOpen(next: boolean): void {
     if (next === open) return;
@@ -130,6 +146,8 @@ export function startKineticNav(
     // Killing the previous timeline keeps rapid toggling from stranding a half state.
     timeline?.kill();
     timeline = gsap.timeline({ defaults: { ease: "kinetic", duration } });
+    // A non-null local: narrowing on the outer `let` is not carried into the callbacks.
+    const tl = timeline;
 
     if (next) {
       timeline
@@ -145,10 +163,20 @@ export function startKineticNav(
         )
         .fromTo(
           links,
-          { yPercent: 140, rotate: reduced ? 0 : 8 },
-          { yPercent: 0, rotate: 0, stagger: 0.05 },
+          { yPercent: reduced ? 0 : 70 },
+          { yPercent: 0, stagger: 0.05 },
           "<+=0.35"
         );
+
+      // Then the characters settle within each label that has already arrived.
+      chars.forEach((group, index) => {
+        tl.fromTo(
+          group,
+          { yPercent: 32, opacity: 0.18 },
+          { yPercent: 0, opacity: 1, duration: 0.42, ease: "power2.out", stagger: 0.012 },
+          `<+=${index * 0.05}`
+        );
+      });
       if (fades.length) {
         timeline.fromTo(
           fades,
@@ -159,6 +187,17 @@ export function startKineticNav(
       }
       // Move focus into the overlay so keyboard users land where the eye does.
       timeline.add(() => wrapper.querySelector<HTMLElement>(".nav-link")?.focus());
+
+      /*
+       * The same guard the headline needs. `fromTo` writes the dimmed state at once and
+       * leaves the ticker to undo it, and requestAnimationFrame is throttled or paused
+       * in a background tab -- which would leave the menu open with its labels stuck
+       * faint and offset. A timer keeps running there.
+       */
+      clearTimeout(watchdog);
+      watchdog = window.setTimeout(() => {
+        if (tl.progress() < 1) tl.progress(1);
+      }, 2200);
     } else {
       timeline
         .to(overlay, { autoAlpha: 0 })
@@ -199,6 +238,8 @@ export function startKineticNav(
   // every hover, which was more spectacle than a menu needs.
 
   return () => {
+    clearTimeout(watchdog);
+    splits.forEach((split) => split.revert());
     timeline?.kill();
     trigger.removeEventListener("click", onTrigger);
     overlay.removeEventListener("click", onOverlay);
