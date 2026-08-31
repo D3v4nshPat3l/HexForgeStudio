@@ -214,31 +214,6 @@ export function renderLanding(): string {
           <a class="cta anim-pulse" href="#/app">Launch Workstation</a>
           <button type="button" class="cta-ghost" data-panel="capabilities">See what it does</button>
         </div>
-      <!--
-        A tilted glass slab carrying a real fragment of the product. Rotation follows the
-        pointer through custom properties, so the browser only recomposites the layer.
-      -->
-      <div class="showpiece anim" style="--d:.55s" aria-hidden="true">
-        <div class="showpiece-slab">
-          <div class="showpiece-chrome"><i></i><i></i><i></i><span>evidence-sample.pdf</span></div>
-          <div class="showpiece-body">
-            <div class="showpiece-verdict">
-              <div class="showpiece-dial"><b>94</b><small>OF 100</small></div>
-              <div><b>Critical</b><span>Executable disguised by its extension</span></div>
-            </div>
-            <div class="showpiece-rows">
-              ${["25 50 44 46 2D 31 2E 37", "4D 5A 90 00 03 00 00 00", "6B 65 72 6E 65 6C 33 32", "56 69 72 74 75 61 6C 41"]
-                .map((row, i) => `<code style="--i:${i}">${row}</code>`).join("")}
-            </div>
-            <div class="showpiece-bars">
-              ${Array.from({ length: 26 }, (_, i) => {
-                const h = Math.round((Math.sin(i / 2.4) * 0.3 + 0.55 + (i > 17 ? 0.35 : 0)) * 100);
-                return `<i style="--h:${Math.min(98, h)}%;--i:${i}"></i>`;
-              }).join("")}
-            </div>
-          </div>
-        </div>
-      </div>
       </main>
 
       <footer class="stats" id="stats">

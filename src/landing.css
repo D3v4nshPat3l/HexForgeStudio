@@ -375,9 +375,9 @@ html:has(.landing), body:has(.landing) { overflow-x: hidden; overflow-y: auto; }
   font-family: var(--font-display);
   font-weight: 400;
   color: #fff;
-  font-size: clamp(28px, 6.2vw, 80px);
-  letter-spacing: -0.04em;
-  line-height: 1.12;
+  font-size: clamp(38px, 6.6vw, 100px);
+  letter-spacing: -0.045em;
+  line-height: 1.06;
   white-space: nowrap;
 }
 .headline .line {
@@ -395,7 +395,7 @@ html:has(.landing), body:has(.landing) { overflow-x: hidden; overflow-y: auto; }
 }
 
 .subhead {
-  max-width: min(500px, 92%);
+  max-width: min(680px, 92%);
   margin: clamp(14px, 2.2vh, 22px) 0 0;
   font-size: clamp(calc(13.5px + 2pt), calc(1.55vw + 2pt), calc(16.5px + 2pt));
   line-height: 1.55;
@@ -826,7 +826,7 @@ button.menu-link { width: 100%; }
 }
 
 /* ============================================================================
-   Hero layout with the showpiece
+   Hero controls
    ========================================================================== */
 
 .hero { position: relative; }
@@ -859,158 +859,43 @@ button.menu-link { width: 100%; }
 }
 
 /* ============================================================================
-   Showpiece — a glass slab carrying a fragment of the real product
+   Hero composition
    ----------------------------------------------------------------------------
-   Rotation tracks the pointer through --px/--py. Hidden below 1200px, where
-   there is no room for it beside the copy.
-   ========================================================================== */
+   One centred column at every width. The hero used to split into copy plus a glass
+   slab above 1200px; the slab is gone, and with it the two-column grid, the
+   collisions it kept causing against the stats row, and the height it demanded --
+   which is what forced the page to scroll on a normal window.
+   ========================================================================= */
+
+.hero { text-align: center; }
+.hero-actions { justify-content: center; }
 
 /*
- * Wide viewports split the hero into copy and showpiece. Absolute positioning let the
- * slab run off the right edge and collide with the stats row, so it is a real grid
- * column instead.
+ * Vertical budget for short windows.
+ *
+ * The composition is meant to sit in one screen. With the slab gone the column is
+ * far shorter, so these steps only trim the type scale -- nothing has to be hidden,
+ * and no realistic desktop window needs to scroll.
  */
-@media (min-width: 1200px) {
-  .hero {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) clamp(340px, 30vw, 440px);
-    align-items: center;
-    /* Row gap replaces the children's own margins, which stacked up and pushed the
-       call to action down into the stats row. */
-    align-content: safe center;
-    row-gap: clamp(10px, 1.6vh, 20px);
-    column-gap: clamp(28px, 4vw, 64px);
-    max-width: min(1280px, 94vw);
-    text-align: left;
-  }
-  .hero > .trust,
-  .hero > .headline,
-  .hero > .subhead,
-  .hero > .hero-actions {
-    grid-column: 1;
-    justify-self: start;
-    margin-top: 0;
-    margin-bottom: 0;
-  }
-  .subhead { margin-left: 0; margin-right: 0; }
-  .hero-actions { justify-content: flex-start; }
-  /* Span every copy row so the slab stays vertically centred beside them. */
-  .showpiece { grid-column: 2; grid-row: 1 / -1; align-self: center; }
+@media (max-height: 900px) {
+  .page { padding-top: clamp(10px, 1.4vh, 16px); padding-bottom: clamp(10px, 1.4vh, 16px); }
+  .trust { margin-bottom: 0; }
+  .headline { font-size: clamp(34px, 5.6vw, 82px); }
+  .subhead { font-size: clamp(14px, 1.25vw, 17px); line-height: 1.5; }
+  .hero { gap: clamp(8px, 1.1vh, 14px); }
+  .hero-actions { margin-top: 0; }
+  .stats { gap: clamp(8px, 1.2vw, 16px); }
 }
-
-.showpiece {
-  display: none;
-  width: 100%;
-  perspective: 1200px;
-  pointer-events: none;
+@media (max-height: 760px) {
+  .headline { font-size: clamp(30px, 4.6vw, 64px); }
+  .subhead { font-size: clamp(13.5px, 1.1vw, 15.5px); }
+  .stat-value { font-size: clamp(20px, 1.9vw, 30px); }
+  .trust { --trust-size: clamp(30px, 3.4vw, 34px); }
 }
-@media (min-width: 1200px) { .showpiece { display: block; } }
-
-/*
- * Below this height the two-column composition stops fitting, and the slab is the
- * piece with the most give -- it is illustrative, while the copy and controls are not.
- */
-@media (max-height: 820px) {
-  .showpiece-slab { transform: scale(0.86); transform-origin: center right; }
-  .headline { font-size: clamp(26px, 5vw, 58px); }
+@media (max-height: 640px) {
+  .headline { font-size: clamp(26px, 4vw, 50px); }
+  .trust { display: none; }
 }
-@media (max-height: 680px) {
-  .showpiece { display: none; }
-  .hero { max-width: 900px; }
-}
-
-.showpiece-slab {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 18px;
-  background: rgba(14, 18, 16, 0.62);
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  box-shadow:
-    0 40px 90px rgba(0, 0, 0, 0.65),
-    0 0 0 1px rgba(126, 231, 135, 0.09),
-    inset 0 1px 0 rgba(255, 255, 255, 0.09);
-  overflow: hidden;
-  transform:
-    rotateY(calc(var(--px, 0) * -7deg))
-    rotateX(calc(var(--py, 0) * 5deg))
-    translateZ(0);
-  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
-}
-
-.showpiece-chrome {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 11px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-}
-.showpiece-chrome i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.22); }
-.showpiece-chrome i:first-child { background: #ff5f57; }
-.showpiece-chrome i:nth-child(2) { background: #febc2e; }
-.showpiece-chrome i:nth-child(3) { background: #28c840; }
-.showpiece-chrome span { margin-left: auto; font: 11px var(--font-display, ui-monospace), monospace; color: #8a8a85; }
-
-.showpiece-body { display: grid; gap: 16px; padding: 18px; }
-
-.showpiece-verdict { display: flex; align-items: center; gap: 16px; }
-.showpiece-dial {
-  position: relative;
-  width: 78px;
-  height: 78px;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  /* 94/100 of the sweep, drawn as a conic ring. */
-  background: conic-gradient(from 180deg, #f85149 0deg 338deg, rgba(255, 255, 255, 0.07) 338deg 360deg);
-  box-shadow: 0 0 26px rgba(248, 81, 73, 0.28);
-}
-.showpiece-dial::before {
-  content: "";
-  position: absolute;
-  inset: 7px;
-  border-radius: 50%;
-  background: #0c100e;
-}
-.showpiece-dial b { position: relative; font: 700 26px ui-monospace, monospace; color: #f85149; line-height: 1; }
-.showpiece-dial small { position: relative; font-size: 8px; letter-spacing: 0.12em; color: #696965; }
-.showpiece-verdict > div:last-child { display: grid; gap: 4px; }
-.showpiece-verdict b { font-size: 15px; color: #f85149; }
-.showpiece-verdict span { font-size: 11.5px; line-height: 1.5; color: #8a8a85; }
-
-.showpiece-rows { display: grid; gap: 5px; }
-.showpiece-rows code {
-  padding: 6px 9px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.035);
-  font: 11px ui-monospace, monospace;
-  color: #7ee787;
-  letter-spacing: 0.06em;
-  animation: rowGlow 4s ease-in-out infinite;
-  animation-delay: calc(var(--i) * 0.45s);
-}
-@keyframes rowGlow { 50% { background: rgba(63, 185, 80, 0.12); } }
-
-.showpiece-bars { display: flex; align-items: flex-end; gap: 3px; height: 56px; }
-.showpiece-bars i {
-  flex: 1;
-  height: var(--h);
-  border-radius: 1px 1px 0 0;
-  background: linear-gradient(180deg, #3fb950, rgba(63, 185, 80, 0.25));
-  animation: barPulse 3.2s ease-in-out infinite;
-  animation-delay: calc(var(--i) * 0.06s);
-}
-.showpiece-bars i:nth-child(n+19) { background: linear-gradient(180deg, #f85149, rgba(248, 81, 73, 0.25)); }
-@keyframes barPulse { 50% { transform: scaleY(0.82); } }
-
-
-@media (prefers-reduced-motion: reduce) {
-  .showpiece-slab { transform: none !important; transition: none; }
-  .showpiece-rows code, .showpiece-bars i { animation: none; }
-}
-
 
 /* ============================================================================
    Kinetic navigation overlay
@@ -1223,36 +1108,6 @@ button.menu-link { width: 100%; }
 }
 
 
-/*
- * Vertical budget for short desktop windows.
- *
- * Scrolling is now possible rather than clipped, but the composition is meant to sit
- * in one screen, so the rhythm tightens before it resorts to that. These steps are
- * what let 1688x861 -- the size the cut-off was reported at -- fit without scrolling.
- */
-@media (min-width: 1200px) and (max-height: 900px) {
-  .page { padding-top: clamp(10px, 1.4vh, 16px); padding-bottom: clamp(10px, 1.4vh, 16px); }
-  .trust { margin-bottom: 0; }
-  .headline { font-size: clamp(26px, 4.6vw, 62px); line-height: 1.08; }
-  .subhead { font-size: clamp(13.5px, 1.15vw, 16px); line-height: 1.5; }
-  .hero { row-gap: clamp(8px, 1.1vh, 14px); padding: 0; }
-  .hero-actions { margin-top: 0; }
-  .stats { gap: clamp(8px, 1.2vw, 16px); }
-  .stat-value { font-size: clamp(20px, 1.9vw, 30px); }
-  .showpiece-slab { transform: scale(0.82); transform-origin: center right; }
-}
-@media (min-width: 1200px) and (max-height: 800px) {
-  .page { padding-top: 8px; padding-bottom: 8px; }
-  .headline { font-size: clamp(24px, 3.6vw, 48px); }
-  .subhead { font-size: clamp(13px, 1.05vw, 15px); }
-  .hero { row-gap: clamp(6px, 0.9vh, 11px); }
-  .stats { gap: clamp(6px, 1vw, 12px); }
-  .stat-value { font-size: clamp(18px, 1.6vw, 25px); }
-  .trust { --trust-size: clamp(30px, 3.4vw, 34px); }
-  .showpiece-slab { transform: scale(0.68); transform-origin: center right; }
-}
-
-
 /* ============================================================================
    Origin button
    The fill grows from the point the pointer entered and retreats to it, so the
@@ -1381,24 +1236,14 @@ button.menu-link { width: 100%; }
 .hero::before {
   content: "";
   position: absolute;
-  inset: -6% -10% -10% -12%;
+  inset: -8% -12%;
   z-index: -1;
   pointer-events: none;
   background: radial-gradient(
-    62% 68% at 28% 56%,
-    rgba(4, 6, 8, 0.92) 0%,
-    rgba(4, 6, 8, 0.78) 38%,
-    rgba(4, 6, 8, 0.36) 68%,
+    58% 62% at 50% 50%,
+    rgba(4, 6, 8, 0.93) 0%,
+    rgba(4, 6, 8, 0.8) 40%,
+    rgba(4, 6, 8, 0.38) 70%,
     transparent 100%
   );
-}
-@media (max-width: 1199px) {
-  .hero::before {
-    background: radial-gradient(
-      78% 62% at 50% 52%,
-      rgba(4, 6, 8, 0.92) 0%,
-      rgba(4, 6, 8, 0.76) 44%,
-      transparent 100%
-    );
-  }
 }
