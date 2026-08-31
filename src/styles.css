@@ -59,10 +59,6 @@
   --panel-hi: #26272a;
   --surface-grid: #0c0c0d;
   --surface-row: #121213;
-  /* Translucent variants, used only while a file is open so the rain field shows
-     through. Derived per theme -- a fixed dark value here inverted the light grid. */
-  --grid-veil: rgba(12, 12, 13, 0.78);
-  --row-veil: rgba(18, 18, 19, 0.76);
 
   --line: #232427;
   --line-soft: #1b1c1e;
@@ -121,10 +117,6 @@
   --panel-hi: #e3e3df;
   --surface-grid: #ffffff;
   --surface-row: #fafaf7;
-  /* The light console keeps solid surfaces: the rain is a dark-ground effect and is
-     not shown here, so there is nothing to let through. */
-  --grid-veil: #ffffff;
-  --row-veil: #fafaf7;
 
   --line: #dcdcd7;
   --line-soft: #e8e8e3;
@@ -2269,21 +2261,8 @@ textarea.injector-source {
  * This was lost once already when the katakana layer was removed, which is what left
  * the rain field painting behind an opaque panel and therefore invisible.
  */
-.view-content,
-.hex-view { background: transparent; }
-
-/*
- * The byte grid's own surfaces go translucent so the field keeps running behind the
- * data rather than being cut off at the panel edge. They stay mostly solid: hex is
- * what has to be read, and the ground under it is what makes that possible. The
- * contrast this leaves is measured rather than assumed.
- */
-.studio-shell.has-file .hex-grid,
-.studio-shell.has-file .hex-rows,
-.studio-shell.has-file .hex-head { background-color: var(--grid-veil); }
-.studio-shell.has-file .hex-row:nth-child(2n),
-.studio-shell.has-file .hex-row:nth-child(2n) .row-offset,
-.studio-shell.has-file .hex-row:nth-child(2n) .ascii-cells { background-color: var(--row-veil); }
+.studio-shell:not(.has-file) .view-content,
+.studio-shell:not(.has-file) .hex-view { background: transparent; }
 .center-workspace { position: relative; }
 .center-workspace > *:not(.rain-field):not(.constellation-mesh) { position: relative; z-index: 1; }
 
@@ -2392,8 +2371,8 @@ textarea.injector-source {
   z-index: 1;
   background-image: radial-gradient(circle at 50% 50%, #0000 0, #0000 2px, hsl(0 0 4%) 2px);
   background-size: 8px 8px;
-  /* Static filter: the published version rotates the hue continuously, which walks the
-     streaks through the whole spectrum. Holding it still keeps them green. */
+  /* Held still. The published version rotates the hue continuously, which walks the
+     streaks through the whole spectrum; stopping it keeps them green. */
   backdrop-filter: blur(1em) brightness(6);
 }
 
@@ -2495,14 +2474,8 @@ textarea.injector-source {
  * screen, and the grid paints its own ground over this anyway.
  */
 .center-workspace .rain-field { opacity: 1; }
-/* Kept running with a file open rather than hidden, just well back. */
-.studio-shell.has-file .center-workspace .rain-field { opacity: 0.7; }
-/*
- * Not shown in the light console. The field is a black ground whose streaks are made
- * by over-brightening what shows through it -- on a light surface that reads as a dark
- * smear rather than as rain, and it drags the panel grey.
- */
-:root[data-theme="light"] .center-workspace .rain-field { display: none; }
+.studio-shell.has-file .center-workspace .rain-field { opacity: 0.28; }
+:root[data-theme="light"] .center-workspace .rain-field { opacity: 0.2; }
 
 @media (prefers-reduced-motion: reduce) {
   .rain-field { animation: none; }
