@@ -356,3 +356,60 @@ export function startSpotlight(element: HTMLElement): () => void {
     window.removeEventListener("pointerleave", onLeave);
   };
 }
+
+
+/**
+ * Publishes normalised pointer position as --px / --py on the stage root.
+ *
+ * Layers translate by a multiple of these, so one pointer listener drives the whole
+ * parallax scene. Values are written as custom properties rather than inline transforms
+ * so the browser recomposites the layers without restyling the tree.
+ *
+ * Motion is skipped entirely under prefers-reduced-motion, and updates are coalesced to
+ * one animation frame because pointermove fires far faster than the display refreshes.
+ */
+export function startParallax(surface: HTMLElement): () => void {
+  if (REDUCED.matches) return () => {};
+
+  let frame = 0;
+  let targetX = 0;
+  let targetY = 0;
+  let currentX = 0;
+  let currentY = 0;
+
+  const apply = (): void => {
+    frame = 0;
+    // Ease toward the pointer rather than snapping, which reads as weight.
+    currentX += (targetX - currentX) * 0.12;
+    currentY += (targetY - currentY) * 0.12;
+    surface.style.setProperty("--px", currentX.toFixed(4));
+    surface.style.setProperty("--py", currentY.toFixed(4));
+    if (Math.abs(targetX - currentX) > 0.002 || Math.abs(targetY - currentY) > 0.002) {
+      frame = window.requestAnimationFrame(apply);
+    }
+  };
+
+  const onMove = (event: PointerEvent): void => {
+    // -1 .. 1 across each axis, measured from the centre of the viewport.
+    targetX = (event.clientX / window.innerWidth) * 2 - 1;
+    targetY = (event.clientY / window.innerHeight) * 2 - 1;
+    if (frame === 0) frame = window.requestAnimationFrame(apply);
+  };
+
+  const onLeave = (): void => {
+    targetX = 0;
+    targetY = 0;
+    if (frame === 0) frame = window.requestAnimationFrame(apply);
+  };
+
+  window.addEventListener("pointermove", onMove, { passive: true });
+  window.addEventListener("pointerleave", onLeave, { passive: true });
+
+  return () => {
+    window.cancelAnimationFrame(frame);
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerleave", onLeave);
+    surface.style.removeProperty("--px");
+    surface.style.removeProperty("--py");
+  };
+}

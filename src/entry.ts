@@ -1,7 +1,7 @@
 import "./styles.css";
 import "./landing.css";
 import { renderLanding } from "./landing";
-import { bindMobileMenu, bindPanels, startBackground, startCounters, startSpotlight } from "./ambient";
+import { bindMobileMenu, bindPanels, startBackground, startCounters, startParallax, startSpotlight } from "./ambient";
 import { applyTheme, resolveInitialTheme, toggleTheme, type ThemeName } from "./theme";
 
 /**
@@ -50,8 +50,9 @@ function showLanding(): void {
     const stopField = startBackground(surface);
     const stopMenu = bindMobileMenu(surface);
     const stopPanels = bindPanels(surface);
+    const stopParallax = startParallax(surface);
     const stopCounters = stats ? startCounters(stats) : () => {};
-    stopAmbient = () => { stopField(); stopMenu(); stopPanels(); stopCounters(); };
+    stopAmbient = () => { stopField(); stopMenu(); stopPanels(); stopParallax(); stopCounters(); };
   }
 }
 

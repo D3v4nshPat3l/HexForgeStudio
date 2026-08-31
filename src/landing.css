@@ -35,27 +35,118 @@
 /* The landing owns the viewport; the workstation re-enables scrolling. */
 html:has(.landing), body:has(.landing) { height: 100%; overflow: hidden; }
 
-/* ------------------------------------------------------------- background */
-.bg {
+/* ============================================================================
+   Depth stage
+   ----------------------------------------------------------------------------
+   A perspective scene of decorative layers at different Z distances. Pointer
+   position is published as --px/--py on .landing and each layer translates by a
+   multiple of it, so the further a layer sits the less it moves.
+
+   Only decorative layers move. Text and controls stay fixed: parallaxing body
+   copy hurts reading comfort and can trigger motion sickness.
+   ========================================================================== */
+
+.stage {
   position: absolute;
   inset: 0;
   z-index: 0;
   overflow: hidden;
   background: var(--bg);
   pointer-events: none;
+  perspective: 1400px;
+  perspective-origin: 50% 45%;
 }
-.bg-field { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
-/* Vignette + floor gradient so UI stays legible over any frame of the animation. */
+.stage-layer {
+  position: absolute;
+  /* Oversized so a parallax shift never exposes an edge. */
+  inset: -8%;
+  transform: translate3d(
+    calc(var(--px, 0) * var(--shift, 0px)),
+    calc(var(--py, 0) * var(--shift, 0px)),
+    0
+  );
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* Furthest: the falling-glyph field. Barely moves, which reads as distance. */
+.depth-far { --shift: 6px; }
+.depth-far canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* Volumetric colour pooling behind the headline. */
+.depth-glow {
+  --shift: 14px;
+  background:
+    radial-gradient(38% 42% at 26% 28%, rgba(63, 185, 80, 0.20) 0%, transparent 70%),
+    radial-gradient(32% 38% at 76% 22%, rgba(35, 134, 54, 0.16) 0%, transparent 72%),
+    radial-gradient(46% 44% at 58% 78%, rgba(22, 90, 40, 0.18) 0%, transparent 74%);
+  filter: blur(34px);
+}
+
+/* Light shafts, angled and slowly drifting. */
+.depth-rays {
+  --shift: 22px;
+  background: repeating-linear-gradient(
+    104deg,
+    transparent 0 62px,
+    rgba(126, 231, 135, 0.045) 62px 66px,
+    transparent 66px 140px
+  );
+  mask-image: radial-gradient(58% 62% at 50% 34%, #000 0%, transparent 78%);
+  animation: rayDrift 26s linear infinite;
+}
+@keyframes rayDrift { to { background-position: 340px 0; } }
+
+/* A receding floor plane, tilted in 3D. This is what sells the space. */
+.depth-grid {
+  --shift: 30px;
+  top: 52%;
+  background-image:
+    linear-gradient(to right, rgba(63, 185, 80, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(63, 185, 80, 0.16) 1px, transparent 1px);
+  background-size: 68px 68px;
+  transform:
+    translate3d(calc(var(--px, 0) * var(--shift)), calc(var(--py, 0) * var(--shift)), 0)
+    rotateX(74deg);
+  transform-origin: 50% 0;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 68%);
+  animation: gridRun 9s linear infinite;
+}
+@keyframes gridRun { to { background-position: 0 68px, 0 68px; } }
+
+/* Foreground motes. Nearest layer, so it moves most. */
+.depth-motes { --shift: 44px; }
+.depth-motes i {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: calc(2px + var(--z) * 1px);
+  height: calc(2px + var(--z) * 1px);
+  border-radius: 50%;
+  background: rgba(126, 231, 135, 0.5);
+  box-shadow: 0 0 calc(var(--z) * 5px) rgba(63, 185, 80, 0.45);
+  animation: moteFloat calc(9s + var(--z) * 4s) ease-in-out infinite alternate;
+}
+@keyframes moteFloat {
+  to { transform: translate3d(calc(var(--z) * 9px), calc(var(--z) * -16px), 0); opacity: 0.35; }
+}
+
 .bg-veil {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(120% 90% at 50% 8%, transparent 0%, rgba(0, 0, 0, 0.42) 62%, rgba(0, 0, 0, 0.82) 100%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, transparent 26%, transparent 62%, rgba(0, 0, 0, 0.72) 100%);
+    radial-gradient(120% 90% at 50% 8%, transparent 0%, rgba(0, 0, 0, 0.34) 62%, rgba(0, 0, 0, 0.74) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, transparent 26%, transparent 60%, rgba(0, 0, 0, 0.7) 100%);
 }
 
-/* Used by both the landing and the workstation, so it must not depend on .landing tokens. */
+/* Final darkening at the corners, which focuses the eye centrally. */
+.stage-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(130% 110% at 50% 45%, transparent 42%, rgba(0, 0, 0, 0.55) 100%);
+}
+
 .cursor-spotlight {
   position: fixed;
   inset: 0;
@@ -63,8 +154,13 @@ html:has(.landing), body:has(.landing) { height: 100%; overflow: hidden; }
   pointer-events: none;
   opacity: var(--on, 0);
   transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-  background: radial-gradient(circle 320px at var(--mx, 50%) var(--my, 50%),
-    rgba(63, 185, 80, 0.15) 0%, rgba(63, 185, 80, 0.05) 40%, transparent 72%);
+  background: radial-gradient(circle 340px at var(--mx, 50%) var(--my, 50%),
+    rgba(90, 235, 130, 0.16) 0%, rgba(63, 185, 80, 0.05) 40%, transparent 72%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-layer { transform: none !important; transition: none; }
+  .depth-rays, .depth-grid, .depth-motes i { animation: none; }
 }
 
 /* ------------------------------------------------------------------ page */
@@ -238,6 +334,12 @@ html:has(.landing), body:has(.landing) { height: 100%; overflow: hidden; }
 /* Headline */
 .headline {
   margin: 0;
+  /*
+   * `overflow: hidden` below sets this element's automatic minimum size to 0, so as a
+   * flex item in a short viewport it collapsed to nothing instead of staying legible.
+   * The headline is the one thing that must never be squeezed away.
+   */
+  flex-shrink: 0;
   font-family: var(--font-display);
   font-weight: 400;
   color: #fff;
@@ -705,4 +807,177 @@ button.menu-link { width: 100%; }
 
 @media (prefers-reduced-motion: reduce) {
   .panel, .panel-scrim { animation: none !important; }
+}
+
+/* ============================================================================
+   Hero layout with the showpiece
+   ========================================================================== */
+
+.hero { position: relative; }
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.4vw, 18px);
+  margin-top: clamp(18px, 2.8vh, 30px);
+}
+
+/* Secondary action: glass rather than a solid fill, so the CTA stays dominant. */
+.cta-ghost {
+  padding: clamp(11px, 1.6vh, 13px) clamp(18px, 2.4vw, 24px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  color: #e8f5ec;
+  font-size: clamp(13.5px, 1.5vw, 14.5px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.25s var(--ease-out), border-color 0.25s var(--ease-out), transform 0.25s var(--ease-out);
+}
+.cta-ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(126, 231, 135, 0.5);
+  transform: translateY(-2px);
+}
+
+/* ============================================================================
+   Showpiece — a glass slab carrying a fragment of the real product
+   ----------------------------------------------------------------------------
+   Rotation tracks the pointer through --px/--py. Hidden below 1200px, where
+   there is no room for it beside the copy.
+   ========================================================================== */
+
+/*
+ * Wide viewports split the hero into copy and showpiece. Absolute positioning let the
+ * slab run off the right edge and collide with the stats row, so it is a real grid
+ * column instead.
+ */
+@media (min-width: 1200px) {
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(340px, 30vw, 440px);
+    align-items: center;
+    /* Row gap replaces the children's own margins, which stacked up and pushed the
+       call to action down into the stats row. */
+    align-content: center;
+    row-gap: clamp(10px, 1.6vh, 20px);
+    column-gap: clamp(28px, 4vw, 64px);
+    max-width: min(1280px, 94vw);
+    text-align: left;
+  }
+  .hero > .trust,
+  .hero > .headline,
+  .hero > .subhead,
+  .hero > .hero-actions {
+    grid-column: 1;
+    justify-self: start;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  .subhead { margin-left: 0; margin-right: 0; }
+  .hero-actions { justify-content: flex-start; }
+  /* Span every copy row so the slab stays vertically centred beside them. */
+  .showpiece { grid-column: 2; grid-row: 1 / -1; align-self: center; }
+}
+
+.showpiece {
+  display: none;
+  width: 100%;
+  perspective: 1200px;
+  pointer-events: none;
+}
+@media (min-width: 1200px) { .showpiece { display: block; } }
+
+.showpiece-slab {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  background: rgba(14, 18, 16, 0.62);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow:
+    0 40px 90px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(126, 231, 135, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+  transform:
+    rotateY(calc(var(--px, 0) * -7deg))
+    rotateX(calc(var(--py, 0) * 5deg))
+    translateZ(0);
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.showpiece-chrome {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+.showpiece-chrome i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.22); }
+.showpiece-chrome i:first-child { background: #ff5f57; }
+.showpiece-chrome i:nth-child(2) { background: #febc2e; }
+.showpiece-chrome i:nth-child(3) { background: #28c840; }
+.showpiece-chrome span { margin-left: auto; font: 11px var(--font-display, ui-monospace), monospace; color: #8a8a85; }
+
+.showpiece-body { display: grid; gap: 16px; padding: 18px; }
+
+.showpiece-verdict { display: flex; align-items: center; gap: 16px; }
+.showpiece-dial {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  /* 94/100 of the sweep, drawn as a conic ring. */
+  background: conic-gradient(from 180deg, #f85149 0deg 338deg, rgba(255, 255, 255, 0.07) 338deg 360deg);
+  box-shadow: 0 0 26px rgba(248, 81, 73, 0.28);
+}
+.showpiece-dial::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  background: #0c100e;
+}
+.showpiece-dial b { position: relative; font: 700 26px ui-monospace, monospace; color: #f85149; line-height: 1; }
+.showpiece-dial small { position: relative; font-size: 8px; letter-spacing: 0.12em; color: #696965; }
+.showpiece-verdict > div:last-child { display: grid; gap: 4px; }
+.showpiece-verdict b { font-size: 15px; color: #f85149; }
+.showpiece-verdict span { font-size: 11.5px; line-height: 1.5; color: #8a8a85; }
+
+.showpiece-rows { display: grid; gap: 5px; }
+.showpiece-rows code {
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
+  font: 11px ui-monospace, monospace;
+  color: #7ee787;
+  letter-spacing: 0.06em;
+  animation: rowGlow 4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.45s);
+}
+@keyframes rowGlow { 50% { background: rgba(63, 185, 80, 0.12); } }
+
+.showpiece-bars { display: flex; align-items: flex-end; gap: 3px; height: 56px; }
+.showpiece-bars i {
+  flex: 1;
+  height: var(--h);
+  border-radius: 1px 1px 0 0;
+  background: linear-gradient(180deg, #3fb950, rgba(63, 185, 80, 0.25));
+  animation: barPulse 3.2s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.06s);
+}
+.showpiece-bars i:nth-child(n+19) { background: linear-gradient(180deg, #f85149, rgba(248, 81, 73, 0.25)); }
+@keyframes barPulse { 50% { transform: scaleY(0.82); } }
+
+
+@media (prefers-reduced-motion: reduce) {
+  .showpiece-slab { transform: none !important; transition: none; }
+  .showpiece-rows code, .showpiece-bars i { animation: none; }
 }

@@ -154,9 +154,27 @@ function panels(): string {
 export function renderLanding(): string {
   return `
   <div class="landing">
-    <div class="bg" aria-hidden="true">
-      <canvas class="bg-field"></canvas>
+    <!--
+      Depth stage. Layers sit at different Z distances and shift with the pointer, which
+      builds parallax without scroll -- this page is a fixed viewport. Only decorative
+      layers move; the headline and controls stay put, because parallaxing text hurts
+      reading and can cause motion sickness.
+    -->
+    <div class="stage" aria-hidden="true">
+      <div class="stage-layer depth-far"><canvas class="bg-field"></canvas></div>
+      <div class="stage-layer depth-glow"></div>
+      <div class="stage-layer depth-rays"></div>
+      <div class="stage-layer depth-grid"></div>
+      <div class="stage-layer depth-motes">
+        ${Array.from({ length: 18 }, (_, i) => {
+          const x = (i * 53) % 100;
+          const y = (i * 37) % 100;
+          const d = (i % 4) + 1;
+          return `<i style="--x:${x}%;--y:${y}%;--z:${d}" data-mote="${d}"></i>`;
+        }).join("")}
+      </div>
       <div class="bg-veil"></div>
+      <div class="stage-vignette"></div>
     </div>
     <div class="cursor-spotlight" aria-hidden="true"></div>
 
@@ -188,7 +206,35 @@ export function renderLanding(): string {
           court-ready reporting — running entirely on your own machine.
         </p>
 
-        <a class="cta anim-pulse" style="--d:.4s" href="#/app">Launch Workstation</a>
+        <div class="hero-actions anim" style="--d:.4s">
+          <a class="cta anim-pulse" href="#/app">Launch Workstation</a>
+          <button type="button" class="cta-ghost" data-panel="capabilities">See what it does</button>
+        </div>
+      <!--
+        A tilted glass slab carrying a real fragment of the product. Rotation follows the
+        pointer through custom properties, so the browser only recomposites the layer.
+      -->
+      <div class="showpiece anim" style="--d:.55s" aria-hidden="true">
+        <div class="showpiece-slab">
+          <div class="showpiece-chrome"><i></i><i></i><i></i><span>evidence-sample.pdf</span></div>
+          <div class="showpiece-body">
+            <div class="showpiece-verdict">
+              <div class="showpiece-dial"><b>94</b><small>OF 100</small></div>
+              <div><b>Critical</b><span>Executable disguised by its extension</span></div>
+            </div>
+            <div class="showpiece-rows">
+              ${["25 50 44 46 2D 31 2E 37", "4D 5A 90 00 03 00 00 00", "6B 65 72 6E 65 6C 33 32", "56 69 72 74 75 61 6C 41"]
+                .map((row, i) => `<code style="--i:${i}">${row}</code>`).join("")}
+            </div>
+            <div class="showpiece-bars">
+              ${Array.from({ length: 26 }, (_, i) => {
+                const h = Math.round((Math.sin(i / 2.4) * 0.3 + 0.55 + (i > 17 ? 0.35 : 0)) * 100);
+                return `<i style="--h:${Math.min(98, h)}%;--i:${i}"></i>`;
+              }).join("")}
+            </div>
+          </div>
+        </div>
+      </div>
       </main>
 
       <footer class="stats" id="stats">
