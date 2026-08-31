@@ -110,3 +110,56 @@ export function bindOriginButtons(scope: HTMLElement, selector: string): () => v
 
   return () => cleanups.forEach((fn) => fn());
 }
+
+
+/**
+ * The same origin fill for the workstation's header buttons.
+ *
+ * Those buttons already carry a flood element (`.hb-dot`) that expanded from a fixed
+ * point at 20%/40%. Rather than wrap their markup the way `bindOriginButtons` does --
+ * which would disturb the label layers they are built from -- this drives that
+ * existing element from the pointer instead, so the flood starts where the cursor
+ * entered. Position and size travel as custom properties; the stylesheet owns the
+ * growth.
+ *
+ * Disabled state is checked on every enter, not once at bind time: most of these
+ * buttons are disabled until a file is open and become enabled later.
+ */
+export function bindOriginFlood(scope: HTMLElement, selector: string): () => void {
+  if (prefersReducedMotion()) return () => {};
+
+  const cleanups: Array<() => void> = [];
+
+  scope.querySelectorAll<HTMLElement>(selector).forEach((button) => {
+    const place = (x: number, y: number): void => {
+      if (button.matches(":disabled")) return;
+      const rect = button.getBoundingClientRect();
+      button.style.setProperty("--dot-x", `${x}px`);
+      button.style.setProperty("--dot-y", `${y}px`);
+      button.style.setProperty("--dot-size", `${coverDiameter(rect.width, rect.height, x, y)}px`);
+    };
+
+    const onEnter = (event: PointerEvent): void => {
+      const rect = button.getBoundingClientRect();
+      place(event.clientX - rect.left, event.clientY - rect.top);
+    };
+    // Focus has no cursor, so the centre is the truthful origin.
+    const onFocus = (): void => {
+      if (!button.matches(":focus-visible")) return;
+      const rect = button.getBoundingClientRect();
+      place(rect.width / 2, rect.height / 2);
+    };
+
+    button.addEventListener("pointerenter", onEnter);
+    button.addEventListener("focus", onFocus);
+    cleanups.push(() => {
+      button.removeEventListener("pointerenter", onEnter);
+      button.removeEventListener("focus", onFocus);
+      button.style.removeProperty("--dot-x");
+      button.style.removeProperty("--dot-y");
+      button.style.removeProperty("--dot-size");
+    });
+  });
+
+  return () => cleanups.forEach((fn) => fn());
+}

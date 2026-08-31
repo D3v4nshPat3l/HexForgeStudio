@@ -1,7 +1,7 @@
 import { BRAND_MARK } from "./brand";
 import { startKineticNav, WORKSTATION_ITEMS } from "./kinetic-nav";
 import { startConstellation } from "./constellation";
-import { bindOriginButtons } from "./ui/origin-button";
+import { bindOriginButtons, bindOriginFlood } from "./ui/origin-button";
 import { renderByteForge } from "./ui/byte-forge";
 import { hoverButtonLayers } from "./ui/forge-button";
 import { DEFAULT_INJECTOR_STATE, payloadKey, renderInjectorView, type InjectorState } from "./ui/injector";
@@ -2166,7 +2166,11 @@ export function mountWorkstation(root: HTMLDivElement): void {
   stopStudioMesh = mesh && meshHost ? startConstellation(mesh, meshHost) : null;
 
   stopStudioOrigin?.();
-  stopStudioOrigin = bindOriginButtons(app, "#studioMenuBtn, .empty-file-card .primary");
+  const stopWrapped = bindOriginButtons(app, "#studioMenuBtn, .empty-file-card .primary");
+  // Every control in the two header bars floods from the pointer, like the landing's
+  // primary action. These live in the shell markup, so binding once per mount holds.
+  const stopFlood = bindOriginFlood(app, ".command-bar button, .view-tabs button");
+  stopStudioOrigin = () => { stopWrapped(); stopFlood(); };
 
   registerListeners();
   updateAll();

@@ -400,7 +400,7 @@ body.app-mode, html:has(body.app-mode), body.app-mode #app { height: 100%; overf
 }
 .command-bar button .hb-icon { font: 600 var(--fs-sm) var(--mono); color: var(--faint); }
 .command-bar button:hover:not(:disabled) .hb-icon { color: var(--accent-2); }
-.command-bar button:hover:not(:disabled) { background: var(--accent-wash); color: var(--accent-2); }
+.command-bar button:hover:not(:disabled) { color: var(--accent-2); }
 .command-bar button.primary {
   margin: calc(var(--u) * 2) 0 calc(var(--u) * 2) calc(var(--u) * 2);
   align-self: center;
@@ -669,7 +669,7 @@ button.subtle:hover:not(:disabled) { background: var(--accent-wash); color: var(
   letter-spacing: 0.03em;
   white-space: nowrap;
 }
-.view-tabs button:hover { background: var(--panel-3); color: var(--text); }
+.view-tabs button:hover { color: var(--text); }
 .view-tabs button.active { color: var(--accent-2); border-bottom-color: var(--accent); background: var(--panel); }
 .view-tabs button .tab-count {
   display: inline-block;
@@ -1577,18 +1577,28 @@ body.panel-open { overflow: hidden; }
 }
 .hb-arrow { width: 1.05em; height: 1.05em; flex: 0 0 auto; }
 
-/* The flood. Starts as a dot, scales past the bounds so corners fill cleanly. */
+/*
+ * The flood, growing from wherever the pointer entered.
+ *
+ * This is the landing's origin-button fill, reusing the element these buttons already
+ * had. `--dot-x`, `--dot-y` and `--dot-size` are written by bindOriginFlood; the
+ * fallbacks keep the old fixed-point behaviour if the script never runs.
+ *
+ * Growth is a transform rather than the previous animation of left/top/width/height,
+ * so it composites instead of laying out on every frame.
+ */
 .hb-dot {
   position: absolute;
-  left: 20%;
-  top: 40%;
+  left: var(--dot-x, 20%);
+  top: var(--dot-y, 40%);
   z-index: 1;
-  width: calc(var(--u) * 1.5);
-  height: calc(var(--u) * 1.5);
-  border-radius: var(--radius-sm);
+  width: var(--dot-size, calc(var(--u) * 1.5));
+  height: var(--dot-size, calc(var(--u) * 1.5));
+  border-radius: 50%;
   background: var(--accent);
   opacity: 0;
-  transition: all 0.3s var(--ease);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s var(--ease);
   pointer-events: none;
 }
 
@@ -1606,15 +1616,13 @@ body.panel-open { overflow: hidden; }
   color: var(--on-accent);
 }
 .hb:hover:not(:disabled) .hb-dot,
+.hb:focus-visible:not(:disabled) .hb-dot,
 .view-tab:hover .hb-dot,
-.command-bar button:hover:not(:disabled) .hb-dot {
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 0;
+.view-tab:focus-visible .hb-dot,
+.command-bar button:hover:not(:disabled) .hb-dot,
+.command-bar button:focus-visible:not(:disabled) .hb-dot {
   opacity: 1;
-  transform: scale(1.8);
+  transform: translate(-50%, -50%) scale(1);
 }
 
 /* The primary action already sits on the accent, so its flood is the darker shade. */
