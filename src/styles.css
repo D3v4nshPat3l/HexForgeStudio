@@ -2267,3 +2267,39 @@ textarea.injector-source {
   .metrics article, .empty-file-card { transition: none; }
   .empty-file-card { transform: none; }
 }
+
+
+/* Origin fill for the studio header trigger, drawn from theme tokens. */
+.brand-header .nav-menu-btn .origin-fill { background: var(--accent); }
+.brand-header .nav-menu-btn.origin-on .origin-label { color: var(--on-accent); }
+
+/*
+ * Constellation mesh behind the workspace.
+ *
+ * It sits under the panel's content, never over it, and is hidden outright once a
+ * file is open -- a moving field behind a dense byte grid is exactly the thing that
+ * makes hex hard to read.
+ */
+.constellation-mesh {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.85;
+  transition: opacity 0.4s var(--ease);
+}
+.studio-shell.has-file .constellation-mesh { opacity: 0; }
+/*
+ * The view fills its panel with an opaque ground, which sat directly over the mesh.
+ * While no file is open it goes transparent and the panel behind supplies exactly the
+ * same colour, so the mesh is visible and nothing else changes. With a file open the
+ * ground returns and the mesh is off anyway.
+ */
+.studio-shell:not(.has-file) .view-content,
+.studio-shell:not(.has-file) .hex-view { background: transparent; }
+.center-workspace { position: relative; }
+.center-workspace > *:not(.constellation-mesh) { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .constellation-mesh { display: none; }
+}

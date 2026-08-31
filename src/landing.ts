@@ -161,7 +161,7 @@ export function renderLanding(): string {
       reading and can cause motion sickness.
     -->
     <div class="stage" aria-hidden="true">
-      <div class="stage-layer depth-far"><canvas class="bg-field"></canvas></div>
+      <div class="stage-layer depth-far"><div class="jp-matrix" id="matrixField"></div></div>
       <div class="stage-layer depth-glow"></div>
       <div class="stage-layer depth-rays"></div>
       <div class="stage-layer depth-grid"></div>

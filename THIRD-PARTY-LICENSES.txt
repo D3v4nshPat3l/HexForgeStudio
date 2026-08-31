@@ -62,3 +62,13 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+--------------------------------------------------------------------------------
+Katakana matrix field ("wet-lionfish-63")
+by solowzrd, via Uiverse.io -- https://uiverse.io/solowzrd/wet-lionfish-63
+Licensed MIT.
+
+The pulse keyframes, per-cell animation timings and nth-child strides are used as
+published. The grid is generated to fit the viewport in src/matrix-field.ts rather
+than written out as static markup, and an opacity ceiling plus a scrim under the hero
+copy were added so the field cannot overwhelm the text it sits behind.

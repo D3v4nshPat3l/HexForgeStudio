@@ -1,7 +1,9 @@
 import "./styles.css";
 import "./landing.css";
 import { renderLanding } from "./landing";
-import { bindPanels, startBackground, startCounters, startParallax, startSpotlight } from "./ambient";
+import { bindPanels, startCounters, startParallax, startSpotlight } from "./ambient";
+import { startMatrixField } from "./matrix-field";
+import { bindOriginButtons } from "./ui/origin-button";
 import { startKineticNav } from "./kinetic-nav";
 import { applyTheme, resolveInitialTheme, toggleTheme, type ThemeName } from "./theme";
 
@@ -48,14 +50,16 @@ function showLanding(): void {
   const surface = mount.querySelector<HTMLElement>(".landing");
   const stats = mount.querySelector<HTMLElement>("#stats");
   if (surface) {
-    const stopField = startBackground(surface);
+    const field = surface.querySelector<HTMLElement>("#matrixField");
+    const stopField = field ? startMatrixField(field) : () => {};
+    const stopOrigin = bindOriginButtons(surface, ".cta, .cta-ghost, .nav-menu-btn");
     const trigger = surface.querySelector<HTMLElement>("#burger");
     // The kinetic overlay replaces the old slide-down sheet at every width.
     const stopMenu = trigger ? startKineticNav(surface, trigger) : () => {};
     const stopPanels = bindPanels(surface);
     const stopParallax = startParallax(surface);
     const stopCounters = stats ? startCounters(stats) : () => {};
-    stopAmbient = () => { stopField(); stopMenu(); stopPanels(); stopParallax(); stopCounters(); };
+    stopAmbient = () => { stopField(); stopMenu(); stopPanels(); stopParallax(); stopCounters(); stopOrigin(); };
   }
 }
 

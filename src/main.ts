@@ -1,5 +1,7 @@
 import { BRAND_MARK } from "./brand";
 import { startKineticNav, WORKSTATION_ITEMS } from "./kinetic-nav";
+import { startConstellation } from "./constellation";
+import { bindOriginButtons } from "./ui/origin-button";
 import { renderByteForge } from "./ui/byte-forge";
 import { hoverButtonLayers } from "./ui/forge-button";
 import { DEFAULT_INJECTOR_STATE, payloadKey, renderInjectorView, type InjectorState } from "./ui/injector";
@@ -239,6 +241,7 @@ const SHELL_HTML = `
     <div class="rail-resizer" id="resizeLeft" role="separator" aria-orientation="vertical"
       aria-label="Resize the file navigator panel" tabindex="0"></div>
     <section class="center-workspace">
+      <canvas class="constellation-mesh" aria-hidden="true"></canvas>
       <div class="view-content" id="viewContent"></div>
     </section>
 
@@ -647,6 +650,9 @@ function renderWorkspaceTabs(): void {
   // The strip only earns its row once there is more than one file to switch between.
   // With a single file it repeated what the masthead already shows, for 40px.
   document.querySelector(".studio-shell")?.classList.toggle("has-file-tabs", tabs.length > 1);
+  // The constellation mesh hides itself off this class: a moving field behind a dense
+  // byte grid is exactly what makes hex hard to read.
+  document.querySelector(".studio-shell")?.classList.toggle("has-file", tabs.length > 0);
 
   if (tabs.length === 0) {
     workspaceTabs.innerHTML = "<span>Open multiple files to create workspace tabs.</span>";
@@ -2112,6 +2118,8 @@ void buildPdfReport;
 
 /** Builds the workstation shell into `root` and wires it up. Called once by the router. */
 let stopStudioNav: (() => void) | null = null;
+let stopStudioMesh: (() => void) | null = null;
+let stopStudioOrigin: (() => void) | null = null;
 
 export function mountWorkstation(root: HTMLDivElement): void {
   app = root;
@@ -2151,6 +2159,14 @@ export function mountWorkstation(root: HTMLDivElement): void {
   stopStudioNav = menuTrigger
     ? startKineticNav(app, menuTrigger, WORKSTATION_ITEMS)
     : null;
+
+  stopStudioMesh?.();
+  const mesh = document.querySelector<HTMLCanvasElement>(".constellation-mesh");
+  const meshHost = document.querySelector<HTMLElement>(".center-workspace");
+  stopStudioMesh = mesh && meshHost ? startConstellation(mesh, meshHost) : null;
+
+  stopStudioOrigin?.();
+  stopStudioOrigin = bindOriginButtons(app, "#studioMenuBtn, .empty-file-card .primary");
 
   registerListeners();
   updateAll();
