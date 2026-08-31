@@ -1,61 +1,20 @@
 /**
- * Interactive hover button.
+ * Header button contents.
  *
- * A native port of the shadcn/React `InteractiveHoverButton`. This project is vanilla
- * TypeScript with hand-authored CSS -- there is no React, Tailwind, or shadcn in the
- * tree -- so the component is reproduced as markup plus CSS rather than pulling a
- * rendering library in for one control.
- *
- * Behaviour matches the original: the resting label slides right and fades out, a
- * second label slides in from the right with a trailing arrow, and a dot anchored at
- * 20%/40% expands to flood the surface.
+ * The command bar and view tabs previously used a three-layer hover: the resting label
+ * slid out, a second label slid in with an arrow, and a dot flooded the surface. That
+ * has been replaced by the same origin fill the landing's primary action and the Menu
+ * button use, which is driven from ui/origin-button.ts and needs only a plain label
+ * to wrap. What remains here is the markup for that label.
  */
 
-/** lucide-react `ArrowRight`, inlined so the icon package is not a dependency. */
-const ARROW_RIGHT = `<svg class="hb-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`;
-
-/**
- * The three layers the effect needs, for callers that own the surrounding button.
- * `trailing` and `icon` are rendered inside the resting layer only -- a count badge or
- * a leading glyph should not be duplicated in the layer that slides in.
- */
-export function hoverButtonLayers(text: string, trailing = "", icon = ""): string {
-  const label = escapeHtml(text);
-  // The icon rides in the resting layer so it slides out with the label. The layer
-  // that slides in carries the arrow instead, matching the original component.
-  const leading = icon ? `<b class="hb-icon">${escapeHtml(icon)}</b>` : "";
-  return `<span class="hb-rest">${leading}${label}${trailing}</span>` +
-    `<span class="hb-hover" aria-hidden="true"><span>${label}</span>${ARROW_RIGHT}</span>` +
-    `<span class="hb-dot" aria-hidden="true"></span>`;
-}
-
-export interface HoverButtonOptions {
-  text: string;
-  action?: string;
-  variant?: string;
-  title?: string;
-  disabled?: boolean;
-  data?: Record<string, string>;
-}
-
-/** A complete button element carrying the effect. */
-export function hoverButton(options: HoverButtonOptions): string {
-  const attrs = ['type="button"', `class="hb ${options.variant ?? ""}"`.trim()];
-  if (options.action) attrs.push(`data-action="${escapeAttribute(options.action)}"`);
-  if (options.title) attrs.push(`title="${escapeAttribute(options.title)}"`);
-  if (options.disabled) attrs.push("disabled");
-  for (const [key, value] of Object.entries(options.data ?? {})) {
-    attrs.push(`data-${escapeAttribute(key)}="${escapeAttribute(value)}"`);
-  }
-  return `<button ${attrs.join(" ")}>${hoverButtonLayers(options.text)}</button>`;
+/** Label contents for a header button: an optional leading glyph, then the text. */
+export function headerLabel(text: string, trailing = "", icon = ""): string {
+  const leading = icon ? `<b class="cmd-icon" aria-hidden="true">${escapeHtml(icon)}</b>` : "";
+  return `${leading}<span class="cmd-text">${escapeHtml(text)}</span>${trailing}`;
 }
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
-}
-
-function escapeAttribute(value: string): string {
-  return value.replace(/["&<>]/g, (character) =>
-    ({ '"': "&quot;", "&": "&amp;", "<": "&lt;", ">": "&gt;" })[character] ?? character);
 }

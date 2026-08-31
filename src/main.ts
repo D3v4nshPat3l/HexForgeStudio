@@ -1,9 +1,10 @@
 import { BRAND_MARK } from "./brand";
 import { startKineticNav, WORKSTATION_ITEMS } from "./kinetic-nav";
 import { startConstellation } from "./constellation";
-import { bindOriginButtons, bindOriginFlood } from "./ui/origin-button";
+import { startMatrixField } from "./matrix-field";
+import { bindOriginButtons } from "./ui/origin-button";
 import { renderByteForge } from "./ui/byte-forge";
-import { hoverButtonLayers } from "./ui/forge-button";
+import { headerLabel } from "./ui/forge-button";
 import { DEFAULT_INJECTOR_STATE, payloadKey, renderInjectorView, type InjectorState } from "./ui/injector";
 import { loadPayloadLibrary, libraryStatus } from "./analyzers/payload-library";
 import { loadShellLibrary, shellLibraryStatus } from "./analyzers/shell-library";
@@ -176,33 +177,33 @@ const SHELL_HTML = `
   </header>
 
   <nav class="command-bar" aria-label="Application commands">
-    <button data-command="new">${hoverButtonLayers("New", '', '＋')}</button>
-    <button data-command="open">${hoverButtonLayers("Open", '', '↥')}</button>
-    <button data-command="import">${hoverButtonLayers("Import Data", '', '⇥')}</button>
+    <button data-command="new">${headerLabel("New", '', '＋')}</button>
+    <button data-command="open">${headerLabel("Open", '', '↥')}</button>
+    <button data-command="import">${headerLabel("Import Data", '', '⇥')}</button>
     <span class="command-divider"></span>
-    <button data-command="save" disabled>${hoverButtonLayers("Save", '', '▣')}</button>
-    <button data-command="saveas" disabled>${hoverButtonLayers("Save As", '', '▤')}</button>
-    <button data-command="export-selection" disabled>${hoverButtonLayers("Export Selection", '', '⇩')}</button>
+    <button data-command="save" disabled>${headerLabel("Save", '', '▣')}</button>
+    <button data-command="saveas" disabled>${headerLabel("Save As", '', '▤')}</button>
+    <button data-command="export-selection" disabled>${headerLabel("Export Selection", '', '⇩')}</button>
     <span class="command-divider"></span>
-    <button data-command="undo" disabled>${hoverButtonLayers("Undo", '', '↶')}</button>
-    <button data-command="redo" disabled>${hoverButtonLayers("Redo", '', '↷')}</button>
+    <button data-command="undo" disabled>${headerLabel("Undo", '', '↶')}</button>
+    <button data-command="redo" disabled>${headerLabel("Redo", '', '↷')}</button>
     <span class="command-divider"></span>
-    <button data-command="find" disabled>${hoverButtonLayers("Find", '', '⌕')}</button>
-    <button data-command="replace" disabled>${hoverButtonLayers("Replace", '', '⟳')}</button>
-    <button data-command="goto" disabled>${hoverButtonLayers("Go To", '', '#')}</button>
+    <button data-command="find" disabled>${headerLabel("Find", '', '⌕')}</button>
+    <button data-command="replace" disabled>${headerLabel("Replace", '', '⟳')}</button>
+    <button data-command="goto" disabled>${headerLabel("Go To", '', '#')}</button>
     <span class="command-divider"></span>
-    <button data-command="insert" disabled>${hoverButtonLayers("Insert", '', '⊕')}</button>
-    <button data-command="delete" disabled>${hoverButtonLayers("Delete", '', '⌫')}</button>
+    <button data-command="insert" disabled>${headerLabel("Insert", '', '⊕')}</button>
+    <button data-command="delete" disabled>${headerLabel("Delete", '', '⌫')}</button>
     <span class="command-spacer"></span>
     <div class="view-tabs" id="viewTabs" role="tablist" aria-label="Workspace views">
-      <button class="view-tab active" data-view="hex">${hoverButtonLayers("Hex Editor")}</button>
-      <button class="view-tab" data-view="signature">${hoverButtonLayers("Signature Analysis")}</button>
-      <button class="view-tab" data-view="intel">${hoverButtonLayers("Threat Intelligence", '<span class="tab-count" id="intelTabCount">0</span>')}</button>
-      <button class="view-tab" data-view="forensics">${hoverButtonLayers("Forensics Lab")}</button>
-      <button class="view-tab" data-view="comparison">${hoverButtonLayers("File Comparison")}</button>
-      <button class="view-tab" data-view="preview">${hoverButtonLayers("PE / Preview")}</button>
-      <button class="view-tab" data-view="injector">${hoverButtonLayers("Injector")}</button>
-      <button class="view-tab" data-view="report">${hoverButtonLayers("PDF Report")}</button>
+      <button class="view-tab active" data-view="hex">${headerLabel("Hex Editor")}</button>
+      <button class="view-tab" data-view="signature">${headerLabel("Signature Analysis")}</button>
+      <button class="view-tab" data-view="intel">${headerLabel("Threat Intelligence", '<span class="tab-count" id="intelTabCount">0</span>')}</button>
+      <button class="view-tab" data-view="forensics">${headerLabel("Forensics Lab")}</button>
+      <button class="view-tab" data-view="comparison">${headerLabel("File Comparison")}</button>
+      <button class="view-tab" data-view="preview">${headerLabel("PE / Preview")}</button>
+      <button class="view-tab" data-view="injector">${headerLabel("Injector")}</button>
+      <button class="view-tab" data-view="report">${headerLabel("PDF Report")}</button>
     </div>
   </nav>
 
@@ -241,6 +242,7 @@ const SHELL_HTML = `
     <div class="rail-resizer" id="resizeLeft" role="separator" aria-orientation="vertical"
       aria-label="Resize the file navigator panel" tabindex="0"></div>
     <section class="center-workspace">
+      <div class="jp-matrix studio-matrix" id="studioMatrix" aria-hidden="true"></div>
       <canvas class="constellation-mesh" aria-hidden="true"></canvas>
       <div class="view-content" id="viewContent"></div>
     </section>
@@ -2163,14 +2165,19 @@ export function mountWorkstation(root: HTMLDivElement): void {
   stopStudioMesh?.();
   const mesh = document.querySelector<HTMLCanvasElement>(".constellation-mesh");
   const meshHost = document.querySelector<HTMLElement>(".center-workspace");
-  stopStudioMesh = mesh && meshHost ? startConstellation(mesh, meshHost) : null;
+  const stopMesh = mesh && meshHost ? startConstellation(mesh, meshHost) : () => {};
+  // The landing's katakana field, behind the editor at a fraction of its brightness.
+  const studioMatrix = document.querySelector<HTMLElement>("#studioMatrix");
+  const stopMatrix = studioMatrix ? startMatrixField(studioMatrix) : () => {};
+  stopStudioMesh = () => { stopMesh(); stopMatrix(); };
 
   stopStudioOrigin?.();
-  const stopWrapped = bindOriginButtons(app, "#studioMenuBtn, .empty-file-card .primary");
-  // Every control in the two header bars floods from the pointer, like the landing's
-  // primary action. These live in the shell markup, so binding once per mount holds.
-  const stopFlood = bindOriginFlood(app, ".command-bar button, .view-tabs button");
-  stopStudioOrigin = () => { stopWrapped(); stopFlood(); };
+  // The two header bars now use the same treatment as the Menu button rather than a
+  // separate flood, so one binding covers everything.
+  stopStudioOrigin = bindOriginButtons(
+    app,
+    "#studioMenuBtn, .empty-file-card .primary, .command-bar button, .view-tabs button"
+  );
 
   registerListeners();
   updateAll();

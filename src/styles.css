@@ -398,8 +398,6 @@ body.app-mode, html:has(body.app-mode), body.app-mode #app { height: 100%; overf
   border-bottom: 2px solid transparent;
   transition: background 0.14s var(--ease), color 0.14s var(--ease);
 }
-.command-bar button .hb-icon { font: 600 var(--fs-sm) var(--mono); color: var(--faint); }
-.command-bar button:hover:not(:disabled) .hb-icon { color: var(--accent-2); }
 .command-bar button:hover:not(:disabled) { color: var(--accent-2); }
 .command-bar button.primary {
   margin: calc(var(--u) * 2) 0 calc(var(--u) * 2) calc(var(--u) * 2);
@@ -411,10 +409,8 @@ body.app-mode, html:has(body.app-mode), body.app-mode #app { height: 100%; overf
   border-bottom: 0;
   box-shadow: 0 calc(var(--u) * 0.6) calc(var(--u) * 2.4) rgba(63, 185, 80, 0.28);
 }
-.command-bar button.primary .hb-icon { color: var(--on-accent); }
 .command-bar button.primary:hover { filter: brightness(1.12); }
 .command-bar button:disabled { color: var(--dim); cursor: default; }
-.command-bar button:disabled .hb-icon { color: var(--dim); }
 
 .command-divider { width: 1px; background: var(--line); margin: calc(var(--u) * 2.5) 0; flex: 0 0 auto; }
 .command-spacer { flex: 1 0 calc(var(--u) * 2); }
@@ -1546,94 +1542,36 @@ body.panel-open { overflow: hidden; }
    under the cursor while you are reading it.
    ========================================================================== */
 
-.hb, .view-tab, .command-bar button {
+.view-tab, .command-bar button {
   position: relative;
   isolation: isolate;
   overflow: hidden;
 }
 
-.hb-rest {
-  position: relative;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--u) * 1.4);
-  transform: translateX(2px);
-  transition: transform 0.3s var(--ease), opacity 0.3s var(--ease);
-}
-
-.hb-hover {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: calc(var(--u) * 1.2);
-  transform: translateX(calc(var(--u) * 6));
-  opacity: 0;
-  transition: transform 0.3s var(--ease), opacity 0.3s var(--ease);
-  pointer-events: none;
-}
-.hb-arrow { width: 1.05em; height: 1.05em; flex: 0 0 auto; }
-
 /*
- * The flood, growing from wherever the pointer entered.
+ * Header buttons carry the same origin fill as the landing's primary action and the
+ * Menu button: a disc grows from the point the pointer entered until it covers the
+ * control, and the label inverts against it.
  *
- * This is the landing's origin-button fill, reusing the element these buttons already
- * had. `--dot-x`, `--dot-y` and `--dot-size` are written by bindOriginFlood; the
- * fallbacks keep the old fixed-point behaviour if the script never runs.
- *
- * Growth is a transform rather than the previous animation of left/top/width/height,
- * so it composites instead of laying out on every frame.
+ * This replaces a three-layer hover -- resting label sliding out, a second label
+ * sliding in with an arrow, and a dot flooding behind them. That was a different
+ * effect from the one the Menu button uses, which is what made the two bars look
+ * unrelated to it. The layers and their markup are gone rather than hidden.
  */
-.hb-dot {
-  position: absolute;
-  left: var(--dot-x, 20%);
-  top: var(--dot-y, 40%);
-  z-index: 1;
-  width: var(--dot-size, calc(var(--u) * 1.5));
-  height: var(--dot-size, calc(var(--u) * 1.5));
-  border-radius: 50%;
-  background: var(--accent);
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0);
-  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s var(--ease);
-  pointer-events: none;
-}
+.command-bar button .origin-fill,
+.view-tabs button .origin-fill { background: var(--accent); }
 
-.hb:hover:not(:disabled) .hb-rest,
-.view-tab:hover .hb-rest,
-.command-bar button:hover:not(:disabled) .hb-rest {
-  transform: translateX(calc(var(--u) * 6));
-  opacity: 0;
-}
-.hb:hover:not(:disabled) .hb-hover,
-.view-tab:hover .hb-hover,
-.command-bar button:hover:not(:disabled) .hb-hover {
-  transform: translateX(-2px);
-  opacity: 1;
-  color: var(--on-accent);
-}
-.hb:hover:not(:disabled) .hb-dot,
-.hb:focus-visible:not(:disabled) .hb-dot,
-.view-tab:hover .hb-dot,
-.view-tab:focus-visible .hb-dot,
-.command-bar button:hover:not(:disabled) .hb-dot,
-.command-bar button:focus-visible:not(:disabled) .hb-dot {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-}
+.command-bar button.origin-on .origin-label,
+.view-tabs button.origin-on .origin-label { color: var(--on-accent); }
+.command-bar button.origin-on .cmd-icon,
+.view-tabs button.origin-on .cmd-icon { color: var(--on-accent); }
 
-/* The primary action already sits on the accent, so its flood is the darker shade. */
-.command-bar button.primary .hb-dot { background: var(--accent-deep); }
-.command-bar button.primary:hover:not(:disabled) .hb-hover { color: var(--on-accent); }
+/* The label owns the icon-to-text spacing now that it wraps both. */
+.command-bar button .origin-label,
+.view-tabs button .origin-label { gap: calc(var(--u) * 1.8); }
 
-.hb:disabled .hb-dot, .hb:disabled .hb-hover { display: none; }
-
-@media (prefers-reduced-motion: reduce) {
-  .hb-rest, .hb-hover, .hb-dot { transition: none; }
-}
+.cmd-icon { font: 600 var(--fs-sm) var(--mono); color: var(--faint); }
+.command-bar button:disabled .cmd-icon { color: var(--dim); }
 
 /* ============================================================================
    Byte editor (right rail)
@@ -2311,6 +2249,34 @@ textarea.injector-source {
   transition: opacity 0.4s var(--ease);
 }
 .studio-shell.has-file .constellation-mesh { opacity: 0; }
+
+/*
+ * The landing's katakana field, carried into the editor.
+ *
+ * Held far below its brightness on the landing, because here it sits behind data an
+ * analyst is reading rather than behind a headline. It dims further once a file is
+ * open, when the byte grid becomes the thing that matters, and it is never allowed to
+ * catch the eye ahead of the hex.
+ */
+/* Doubled up on purpose: `.jp-matrix` sets opacity too and its stylesheet loads after
+   this one, so a single class here would lose the tie on source order. */
+.jp-matrix.studio-matrix {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.16;
+  font-size: 26px;
+  transition: opacity 0.4s var(--ease);
+}
+.studio-shell.has-file .jp-matrix.studio-matrix { opacity: 0.06; }
+
+:root[data-theme="light"] .jp-matrix.studio-matrix { opacity: 0.1; }
+:root[data-theme="light"] .studio-shell.has-file .jp-matrix.studio-matrix { opacity: 0.04; }
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-matrix > span { animation: none !important; }
+}
 /*
  * The view fills its panel with an opaque ground, which sat directly over the mesh.
  * While no file is open it goes transparent and the panel behind supplies exactly the
