@@ -72,3 +72,12 @@ The pulse keyframes, per-cell animation timings and nth-child strides are used a
 published. The grid is generated to fit the viewport in src/matrix-field.ts rather
 than written out as static markup, and an opacity ceiling plus a scrim under the hero
 copy were added so the field cannot overwhelm the text it sits behind.
+
+--------------------------------------------------------------------------------
+GSAP (GreenSock Animation Platform) 3.15, including the SplitText plugin
+https://gsap.com -- Standard "no charge" license: https://gsap.com/standard-license
+
+Used for the navigation overlay's entrance, the hero headline's character reveal and
+the magnetic call-to-action buttons. SplitText and the other former Club plugins ship
+free under the standard license from 3.13 onward. The license permits use in a site or
+application that is not itself sold as a competing animation tool, which this is not.

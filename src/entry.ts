@@ -4,6 +4,7 @@ import { renderLanding } from "./landing";
 import { bindPanels, startCounters, startParallax, startSpotlight } from "./ambient";
 import { startMatrixField } from "./matrix-field";
 import { bindOriginButtons } from "./ui/origin-button";
+import { startHeroMotion } from "./hero-motion";
 import { startKineticNav } from "./kinetic-nav";
 import { applyTheme, resolveInitialTheme, toggleTheme, type ThemeName } from "./theme";
 
@@ -53,13 +54,15 @@ function showLanding(): void {
     const field = surface.querySelector<HTMLElement>("#matrixField");
     const stopField = field ? startMatrixField(field) : () => {};
     const stopOrigin = bindOriginButtons(surface, ".cta, .cta-ghost, .nav-menu-btn");
+    // After the origin buttons, so the magnet can move their injected label wrapper.
+    const stopHero = startHeroMotion(surface);
     const trigger = surface.querySelector<HTMLElement>("#burger");
     // The kinetic overlay replaces the old slide-down sheet at every width.
     const stopMenu = trigger ? startKineticNav(surface, trigger) : () => {};
     const stopPanels = bindPanels(surface);
     const stopParallax = startParallax(surface);
     const stopCounters = stats ? startCounters(stats) : () => {};
-    stopAmbient = () => { stopField(); stopMenu(); stopPanels(); stopParallax(); stopCounters(); stopOrigin(); };
+    stopAmbient = () => { stopField(); stopMenu(); stopPanels(); stopParallax(); stopCounters(); stopOrigin(); stopHero(); };
   }
 }
 

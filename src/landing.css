@@ -393,6 +393,17 @@ html:has(.landing), body:has(.landing) { overflow-x: hidden; overflow-y: auto; }
   animation: headlineRise 0.95s var(--ease-out) forwards;
   animation-delay: var(--d, 0s);
 }
+/*
+ * When the character reveal takes over, the line-level entrance stands down. It stays
+ * in the stylesheet as the fallback for a run where the script never arrives, so the
+ * headline is never left mid-transform with nothing to finish it.
+ */
+.headline.is-split .line-inner {
+  transform: none;
+  animation: none;
+}
+/* Characters travel inside the line mask, so they need a box that can be moved. */
+.headline.is-split .line-inner > div { display: inline-block; }
 
 .subhead {
   max-width: min(680px, 92%);
@@ -1121,6 +1132,18 @@ body.menu-open { overflow: hidden; }
 .nav-link-text,
 .nav-link-index { transition: color 0.18s var(--ease-out); }
 
+/*
+ * A small lean on hover, alongside the colour. The label shifts by less than a
+ * character width -- enough to register as a response, not enough to make the list
+ * feel unstable as the pointer travels down it.
+ */
+.nav-link-mask,
+.nav-link-detail { transition: transform 0.22s var(--ease-out); }
+.nav-link:hover .nav-link-mask,
+.nav-link:focus-visible .nav-link-mask { transform: translateX(6px); }
+.nav-link:hover .nav-link-detail,
+.nav-link:focus-visible .nav-link-detail { transform: translateX(6px); }
+
 /* A hairline in the item's colour marks the row without filling it. */
 .nav-link { border-bottom-color: rgba(255, 255, 255, 0.09); transition: border-color 0.18s var(--ease-out); }
 .nav-link:hover,
@@ -1133,7 +1156,11 @@ body.menu-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .nav-link,
   .nav-link-text,
-  .nav-link-index { transition: none; }
+  .nav-link-index,
+  .nav-link-mask,
+  .nav-link-detail { transition: none; }
+  .nav-link:hover .nav-link-mask,
+  .nav-link:hover .nav-link-detail { transform: none; }
 }
 
 
