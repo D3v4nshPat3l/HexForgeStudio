@@ -121,16 +121,19 @@ export function startKineticNav(
   /*
    * Entry labels resolve character by character, like the hero headline.
    *
-   * Tuned down rather than copied across. Characters start faintly visible instead of
-   * fully transparent, so the reveal is a brightening rather than a flash against a
-   * dark panel, and they travel a third of their height with no rotation. A menu is
-   * read immediately after it opens; a high-contrast pop on every entry is tiring in a
-   * way the same effect on one headline is not.
+   * The visible part is movement, not brightness. Characters rise a full line height
+   * from behind the label's own mask, so the reveal reads as a wipe -- clearly legible
+   * as an animation, while the brightness only travels from 0.4 to 1. Fading from zero
+   * on five labels at once is what would tire the eye; the wipe costs it nothing.
+   *
+   * A first pass moved them a third of a line with a 12ms stagger, which was so slight
+   * it read as no animation at all.
    */
   const splits = reduced
     ? []
     : [...links].map((label) => new SplitText(label, { type: "chars" }));
   const chars = splits.map((split) => split.chars);
+  const flatChars = chars.flat();
 
   function setOpen(next: boolean): void {
     if (next === open) return;
@@ -161,20 +164,29 @@ export function startKineticNav(
           { xPercent: 0, rotateY: 0, stagger: 0.12, duration: duration * 0.82 },
           "<"
         )
-        .fromTo(
-          links,
-          { yPercent: reduced ? 0 : 70 },
-          { yPercent: 0, stagger: 0.05 },
-          "<+=0.35"
-        );
+        .set(links, { yPercent: 0 });
 
-      // Then the characters settle within each label that has already arrived.
+      /*
+       * One cascade, not two. The label used to rise as a block and the characters
+       * again inside it, which muddied both. The characters now carry the whole
+       * entrance, each label starting a little after the one above it.
+       */
+      /*
+       * The start state is written here rather than left to `fromTo`.
+       *
+       * These tweens sit at a position later than the playhead, so their from-values
+       * only land when the timeline first renders -- and if the watchdog fires before
+       * that (a stalled or throttled ticker) it jumps straight to the end and the
+       * reveal never happens at all. That was reproducible: characters stayed at full
+       * opacity and zero offset from open onward. `gsap.set` writes synchronously, so
+       * the labels are always hidden before there is anything to reveal.
+       */
+      if (flatChars.length) gsap.set(flatChars, { yPercent: 100, opacity: 0.4 });
       chars.forEach((group, index) => {
-        tl.fromTo(
+        tl.to(
           group,
-          { yPercent: 32, opacity: 0.18 },
-          { yPercent: 0, opacity: 1, duration: 0.42, ease: "power2.out", stagger: 0.012 },
-          `<+=${index * 0.05}`
+          { yPercent: 0, opacity: 1, duration: 0.5, ease: "power3.out", stagger: 0.03 },
+          0.34 + index * 0.09
         );
       });
       if (fades.length) {
@@ -209,6 +221,8 @@ export function startKineticNav(
         .add(() => {
           wrapper.dataset.nav = "closed";
           trigger.focus();
+          // Leave the labels revealed; the next open sets its own start state.
+          if (flatChars.length) gsap.set(flatChars, { yPercent: 0, opacity: 1 });
         });
     }
   }

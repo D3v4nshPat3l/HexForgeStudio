@@ -59,10 +59,20 @@ function revealHeadline(headline: HTMLElement): () => void {
     if (timeline.progress() < 1) timeline.progress(1);
   }, 2600);
 
+  /*
+   * The start state is written synchronously rather than left to `fromTo`.
+   *
+   * A tween placed later than the playhead only applies its from-values on the
+   * timeline's first render, so if the watchdog above fires first the reveal is skipped
+   * entirely. Setting it here means the characters are always hidden before there is
+   * anything to reveal, whatever the ticker does.
+   */
+  const allChars = splits.flatMap((split) => split.chars);
+  gsap.set(allChars, { yPercent: 60, opacity: 0 });
+
   splits.forEach((split, index) => {
-    timeline.fromTo(
+    timeline.to(
       split.chars,
-      { yPercent: 60, opacity: 0 },
       {
         yPercent: 0,
         opacity: 1,
