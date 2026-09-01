@@ -17,7 +17,7 @@ import { exportAsSourceCode, type SourceLanguage } from "./export-source";
 import { createNativeImagePreview, canBrowserDecodeImage, type PreviewHandle } from "./image-preview";
 import { BUILTIN_SIGNATURES } from "./analyzers/signatures";
 import { summarizeCapabilities } from "./analyzers/capabilities";
-import { applyTheme, resolveInitialTheme, toggleTheme, type ThemeName } from "./theme";
+
 import type { DifferenceRange, FileAnalysis, IocType, ProgressEvent, SearchQuery, SearchResult, Severity, ThreatFinding } from "./types";
 
 type MainView = "hex" | "signature" | "intel" | "forensics" | "comparison" | "preview" | "injector" | "report";
@@ -146,7 +146,6 @@ const HEX_CACHE_MARGIN_ROWS = 800;
 // Assigned by mountWorkstation(). The workstation is loaded lazily from the router,
 // so none of this may touch the DOM at import time.
 let app!: HTMLDivElement;
-let theme: ThemeName = resolveInitialTheme();
 
 const logoSvg = BRAND_MARK;
 
@@ -162,7 +161,6 @@ const SHELL_HTML = `
     </div>
     <div class="header-tools">
       <span id="riskBadgeSlot"></span>
-      <button class="theme-toggle" data-action="toggle-theme" title="Switch between the dark and light console themes" aria-label="Switch theme">◐</button>
       <button type="button" class="nav-menu-btn" id="studioMenuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="kineticNav">
         <span class="menu-btn-text"><span>Menu</span><span>Close</span></span>
         <span class="menu-btn-icon" aria-hidden="true">
@@ -1888,7 +1886,6 @@ app.addEventListener("click", (event) => {
   else if (action === "export-strings" && tab) exportStringsCsv(tab);
   else if (action === "export-signatures" && tab) exportSignaturesCsv(tab);
   else if (action === "export-iocs" && tab) exportIocsCsv(tab);
-  else if (action === "toggle-theme") { theme = toggleTheme(theme); toast(`Switched to the ${theme} console theme.`, "success"); }
   else if (action === "export-source") void exportSource();
   else if (action === "choose-compare") compareInput.click();
   else if (action === "run-tab-compare" && tab) { const selected = document.querySelector<HTMLSelectElement>("#compareTabSelect")?.value; const other = tabs.find((item) => item.id === selected); if (other) void compareWith(currentEffectiveFile(other)); else toast("Choose another open tab or load an external comparison file.", "error"); }

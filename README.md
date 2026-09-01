@@ -176,10 +176,9 @@ there is to report.
 
 ![PDF report](docs/screenshots/12-pdf-report.png)
 
-### Wide view and light theme
+### Wide view
 
 ![Wide view](docs/screenshots/15-wide-view.png)
-![Light theme](docs/screenshots/16-light-theme.png)
 
 ### Regenerating the screenshots
 

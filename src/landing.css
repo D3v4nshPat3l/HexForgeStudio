@@ -90,7 +90,7 @@ html:has(.landing), body:has(.landing) { overflow-x: hidden; overflow-y: auto; }
 .depth-glow {
   --shift: 14px;
   background:
-    radial-gradient(38% 42% at 26% 28%, rgba(63, 185, 80, 0.20) 0%, transparent 70%),
+    radial-gradient(38% 42% at 26% 28%, rgba(167, 139, 250, 0.20) 0%, transparent 70%),
     radial-gradient(32% 38% at 76% 22%, rgba(35, 134, 54, 0.16) 0%, transparent 72%),
     radial-gradient(46% 44% at 58% 78%, rgba(22, 90, 40, 0.18) 0%, transparent 74%);
   filter: blur(34px);
@@ -102,7 +102,7 @@ html:has(.landing), body:has(.landing) { overflow-x: hidden; overflow-y: auto; }
   background: repeating-linear-gradient(
     104deg,
     transparent 0 62px,
-    rgba(126, 231, 135, 0.045) 62px 66px,
+    rgba(196, 181, 253, 0.045) 62px 66px,
     transparent 66px 140px
   );
   mask-image: radial-gradient(58% 62% at 50% 34%, #000 0%, transparent 78%);
@@ -115,8 +115,8 @@ html:has(.landing), body:has(.landing) { overflow-x: hidden; overflow-y: auto; }
   --shift: 30px;
   top: 52%;
   background-image:
-    linear-gradient(to right, rgba(63, 185, 80, 0.16) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(63, 185, 80, 0.16) 1px, transparent 1px);
+    linear-gradient(to right, rgba(167, 139, 250, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(167, 139, 250, 0.16) 1px, transparent 1px);
   background-size: 68px 68px;
   transform:
     translate3d(calc(var(--px, 0) * var(--shift)), calc(var(--py, 0) * var(--shift)), 0)
@@ -136,8 +136,8 @@ html:has(.landing), body:has(.landing) { overflow-x: hidden; overflow-y: auto; }
   width: calc(2px + var(--z) * 1px);
   height: calc(2px + var(--z) * 1px);
   border-radius: 50%;
-  background: rgba(126, 231, 135, 0.5);
-  box-shadow: 0 0 calc(var(--z) * 5px) rgba(63, 185, 80, 0.45);
+  background: rgba(196, 181, 253, 0.5);
+  box-shadow: 0 0 calc(var(--z) * 5px) rgba(167, 139, 250, 0.45);
   animation: moteFloat calc(9s + var(--z) * 4s) ease-in-out infinite alternate;
 }
 @keyframes moteFloat {
@@ -167,7 +167,7 @@ html:has(.landing), body:has(.landing) { overflow-x: hidden; overflow-y: auto; }
   opacity: var(--on, 0);
   transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   background: radial-gradient(circle 340px at var(--mx, 50%) var(--my, 50%),
-    rgba(90, 235, 130, 0.16) 0%, rgba(63, 185, 80, 0.05) 40%, transparent 72%);
+    rgba(196, 181, 253, 0.16) 0%, rgba(167, 139, 250, 0.05) 40%, transparent 72%);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -650,7 +650,7 @@ body.menu-open { overflow: hidden; }
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
   background:
-    radial-gradient(120% 80% at 0% 0%, rgba(63, 185, 80, 0.13) 0%, transparent 58%),
+    radial-gradient(120% 80% at 0% 0%, rgba(167, 139, 250, 0.13) 0%, transparent 58%),
     #0a0e15;
   box-shadow: 0 40px 120px rgba(0, 0, 0, 0.7);
   animation: panelIn 0.42s var(--ease-out) both;
@@ -678,7 +678,7 @@ body.menu-open { overflow: hidden; }
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #3fb950;
+  color: #a78bfa;
 }
 .panel-head h2 {
   margin: 0;
@@ -742,17 +742,17 @@ body.menu-open { overflow: hidden; }
   background: rgba(255, 255, 255, 0.03);
   transition: border-color 0.24s var(--ease-out), transform 0.24s var(--ease-out);
 }
-.cap-card:hover { border-color: rgba(63, 185, 80, 0.40); transform: translateY(-3px); }
+.cap-card:hover { border-color: rgba(167, 139, 250, 0.40); transform: translateY(-3px); }
 .cap-icon {
   display: grid;
   place-items: center;
   width: 40px;
   height: 40px;
   margin-bottom: 14px;
-  border: 1px solid rgba(63, 185, 80, 0.32);
+  border: 1px solid rgba(167, 139, 250, 0.32);
   border-radius: 12px;
-  background: rgba(63, 185, 80, 0.12);
-  color: #3fb950;
+  background: rgba(167, 139, 250, 0.12);
+  color: #a78bfa;
   font-size: 18px;
 }
 .cap-card h3 { margin: 0 0 10px; font-size: 17px; font-weight: 600; color: #fff; letter-spacing: -0.01em; }
@@ -764,10 +764,10 @@ body.menu-open { overflow: hidden; }
   line-height: 1.55;
   color: #9fb0c4;
 }
-.cap-card li::before { content: ""; position: absolute; left: 0; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: #3fb950; }
+.cap-card li::before { content: ""; position: absolute; left: 0; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: #a78bfa; }
 
 .panel-lede { margin: 0 0 22px; font-size: clamp(15px, 1.5vw, 17px); line-height: 1.7; color: #b9c6d6; }
-.panel-lede code { padding: 2px 7px; border-radius: 5px; background: rgba(63, 185, 80, 0.14); color: #56d364; font-size: 0.92em; }
+.panel-lede code { padding: 2px 7px; border-radius: 5px; background: rgba(167, 139, 250, 0.14); color: #c4b5fd; font-size: 0.92em; }
 
 .privacy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
 .privacy-grid > div {
@@ -782,14 +782,14 @@ body.menu-open { overflow: hidden; }
 .panel-note {
   margin-top: 20px;
   padding: 18px;
-  border-left: 3px solid #3fb950;
+  border-left: 3px solid #a78bfa;
   border-radius: 0 12px 12px 0;
-  background: rgba(63, 185, 80, 0.09);
+  background: rgba(167, 139, 250, 0.09);
   font-size: 14px;
   line-height: 1.65;
   color: #a9bacd;
 }
-.panel-note b { color: #56d364; }
+.panel-note b { color: #c4b5fd; }
 
 .panel-foot {
   flex-shrink: 0;
@@ -946,7 +946,7 @@ body.menu-open { overflow: hidden; }
   transition: background 0.25s var(--ease-out), border-color 0.25s var(--ease-out);
 }
 .nav-menu-btn:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.3); }
-.nav-menu-btn:focus-visible { outline: 2px solid var(--accent, #3fb950); outline-offset: 3px; }
+.nav-menu-btn:focus-visible { outline: 2px solid var(--accent, #a78bfa); outline-offset: 3px; }
 
 /* Two stacked labels inside a one-line mask; GSAP slides the pair. */
 .menu-btn-text {
@@ -1012,9 +1012,9 @@ body.menu-open { overflow: hidden; }
   transform-origin: right center;
   backface-visibility: hidden;
 }
-.backdrop-layer.first  { background: rgba(63, 185, 80, 0.16); }
+.backdrop-layer.first  { background: rgba(167, 139, 250, 0.16); }
 .backdrop-layer.second { background: rgba(20, 22, 21, 0.9); }
-.backdrop-layer.third  { background: #0d0f0e; border-left: 1px solid rgba(63, 185, 80, 0.22); }
+.backdrop-layer.third  { background: #0d0f0e; border-left: 1px solid rgba(167, 139, 250, 0.22); }
 
 
 .menu-content-wrapper {
@@ -1067,13 +1067,13 @@ body.menu-open { overflow: hidden; }
   text-decoration: none;
   cursor: pointer;
 }
-.nav-link:focus-visible { outline: 2px solid var(--accent, #3fb950); outline-offset: 2px; }
+.nav-link:focus-visible { outline: 2px solid var(--accent, #a78bfa); outline-offset: 2px; }
 
 .nav-link-index {
   grid-area: index;
   font-family: var(--mono, ui-monospace, monospace);
   font-size: 12px;
-  color: rgba(63, 185, 80, 0.9);
+  color: rgba(167, 139, 250, 0.9);
 }
 /* The mask is what lets the label rise from nothing without clipping the row. */
 .nav-link-mask { grid-area: label; display: block; overflow: hidden; padding-bottom: 0.12em; margin-bottom: -0.12em; }
@@ -1109,10 +1109,10 @@ body.menu-open { overflow: hidden; }
  * than saturated. Taking both from the product palette settles them into the group
  * and means every colour here already exists elsewhere in the application.
  */
-.menu-list-item { --item: #56d364; }
+.menu-list-item { --item: #c4b5fd; }
 .menu-list-item:nth-child(5n + 2) { --item: #58a6ff; }
 .menu-list-item:nth-child(5n + 3) { --item: #d29922; }
-.menu-list-item:nth-child(5n + 4) { --item: #a371f7; }
+.menu-list-item:nth-child(5n + 4) { --item: #34d399; }
 .menu-list-item:nth-child(5n + 5) { --item: #ff7b72; }
 
 /*
@@ -1200,7 +1200,7 @@ body.menu-open { overflow: hidden; }
 .cta-ghost.origin-on .origin-label, .nav-menu-btn.origin-on .origin-label { color: #0a0a0b; }
 
 /* The primary button is already light, so it fills with the accent instead. */
-.cta .origin-fill { background: var(--accent, #3fb950); }
+.cta .origin-fill { background: var(--accent, #a78bfa); }
 .cta.origin-on .origin-label { color: #05130a; }
 
 @media (prefers-reduced-motion: reduce) {

@@ -6,7 +6,7 @@ import { startMatrixField } from "./matrix-field";
 import { bindOriginButtons } from "./ui/origin-button";
 import { startHeroMotion } from "./hero-motion";
 import { startKineticNav } from "./kinetic-nav";
-import { applyTheme, resolveInitialTheme, toggleTheme, type ThemeName } from "./theme";
+import { applyTheme } from "./theme";
 
 /**
  * Application entry and route switch.
@@ -22,8 +22,7 @@ const root = document.querySelector<HTMLDivElement>("#app");
 if (!root) throw new Error("Application root is missing.");
 const mount: HTMLDivElement = root;
 
-let theme: ThemeName = resolveInitialTheme();
-applyTheme(theme);
+applyTheme();
 
 let workstationLoaded = false;
 let currentRoute = "";
@@ -88,9 +87,6 @@ async function showWorkstation(): Promise<void> {
 }
 
 function bindLandingChrome(): void {
-  mount.querySelector<HTMLButtonElement>("[data-action='toggle-theme']")?.addEventListener("click", () => {
-    theme = toggleTheme(theme);
-  });
 
 }
 

@@ -143,20 +143,20 @@ export function startConstellation(canvas: HTMLCanvasElement, host: HTMLElement)
         const x = col * PITCH;
         if (e <= 0) {
           // Resting mesh: barely there, just enough to imply the grid.
-          context.fillStyle = "rgba(126, 231, 135, 0.13)";
+          context.fillStyle = "rgba(196, 181, 253, 0.13)";
           context.fillRect(x, y, 1.6, 1.6);
           continue;
         }
         const size = 1 + e * 3.4;
-        context.fillStyle = `rgba(126, 231, 135, ${(0.12 + e * 0.72).toFixed(3)})`;
+        context.fillStyle = `rgba(196, 181, 253, ${(0.12 + e * 0.72).toFixed(3)})`;
         context.beginPath();
         context.arc(x, y, size, 0, Math.PI * 2);
         context.fill();
 
         if (e > 0.5) {
           const bloom = context.createRadialGradient(x, y, 0, x, y, size * 5);
-          bloom.addColorStop(0, `rgba(86, 211, 100, ${(e * 0.22).toFixed(3)})`);
-          bloom.addColorStop(1, "rgba(86, 211, 100, 0)");
+          bloom.addColorStop(0, `rgba(167, 139, 250, ${(e * 0.22).toFixed(3)})`);
+          bloom.addColorStop(1, "rgba(167, 139, 250, 0)");
           context.fillStyle = bloom;
           context.beginPath();
           context.arc(x, y, size * 5, 0, Math.PI * 2);

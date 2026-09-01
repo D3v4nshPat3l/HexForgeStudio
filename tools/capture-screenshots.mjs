@@ -102,8 +102,8 @@ await mkdir(OUT, { recursive: true });
 // browser can drift apart, and re-downloading a browser to take screenshots is wasteful.
 const installed = process.env.CHROMIUM_PATH;
 const browser = await chromium.launch(installed ? { executablePath: installed } : {});
-// Dark is the product's default look; headless Chromium reports a light preference,
-// which would otherwise capture the whole set in the wrong theme.
+// The console is dark only; headless Chromium reports a light preference, and saying
+// so here keeps form controls and scrollbars from rendering light.
 const page = await browser.newPage({
   viewport: { width: 1680, height: 945 },
   deviceScaleFactor: 1,
@@ -173,10 +173,6 @@ await shot(page, "15-wide-view");
 await page.click('[data-action="toggle-wide"]');
 await page.waitForTimeout(600);
 
-// The last shot documents the light theme, so toggle away from the dark default.
-await page.click('[data-action="toggle-theme"]');
-await page.waitForTimeout(1200);
-await shot(page, "16-light-theme");
 
 await browser.close();
 server.close();
