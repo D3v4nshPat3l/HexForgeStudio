@@ -1,22 +1,28 @@
 <div align="center">
 
-<img src="public/logo-mark.svg" width="120" alt="HexForge Studio">
+<img src="public/logo-mark.svg" width="112" alt="HexForge Studio">
 
 # HexForge Studio
 
-### A complete binary forensics workstation that runs entirely on your own machine
+### Look closer. Find what others miss.
 
-**Hex editing · File identification · Threat intelligence · Payload injection · Court-ready reporting**
+**A local-first binary forensics workstation for careful, byte-level investigation.**
+
+**Hex editing · File identification · Threat intelligence · Forensics · File comparison · PE analysis · Test-payload workbench · PDF reporting**
+
+[Open the live workstation](https://hex-forge-studio.vercel.app/) · [Browse the source](https://github.com/D3v4nshPat3l/HexForgeStudio)
 
 <br>
 
-![Version](https://img.shields.io/badge/version-4.0.0-3fb950?style=flat-square)
-![Node](https://img.shields.io/badge/Node.js-%E2%89%A520.19-3fb950?style=flat-square&logo=node.js&logoColor=white)
-![Python](https://img.shields.io/badge/Python-%E2%89%A53.9-3fb950?style=flat-square&logo=python&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white)
-![License](https://img.shields.io/badge/license-All%20rights%20reserved-6b6b67?style=flat-square)
+![Version](https://img.shields.io/badge/version-4.0.0-242620?style=flat-square)
+![Node](https://img.shields.io/badge/Node.js-%E2%89%A520.19-242620?style=flat-square&logo=node.js&logoColor=white)
+![Python](https://img.shields.io/badge/Python-%E2%89%A53.9-242620?style=flat-square&logo=python&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8-b84322?style=flat-square&logo=typescript&logoColor=white)
+![License](https://img.shields.io/badge/license-All%20rights%20reserved-686a62?style=flat-square)
 
 `40,849 payloads` · `135 connect-back commands` · `75 file signatures` · `0 bytes uploaded`
+
+<a href="docs/screenshots/01-landing.png"><img src="docs/screenshots/01-landing.png" alt="HexForge Studio's warm-paper landing page with its binary inspection specimen and oxide-accented identity" width="100%"></a>
 
 </div>
 
@@ -104,19 +110,20 @@ HexForge Studio removes the question entirely.
 
 ## 3. Screenshots
 
-> **Note:** the images below live in `docs/screenshots/`. If they look out of date after
-> you change the interface, regenerate them all with two commands — see
-> [regenerating screenshots](#regenerating-the-screenshots) at the end of this section.
+These screenshots show the current paper, ink, and oxide design. The landing page uses a
+quiet animated byte field; screenshots capture a still frame so the interface remains
+easy to scan.
 
 ### The landing page
 
-The front door. Nothing is loaded yet, nothing is running.
+The front door: a byte-inspection specimen, local-first promise, and a restrained moving
+field of connected byte markers behind the illustration.
 
 ![Landing page](docs/screenshots/01-landing.png)
 
-### Capabilities panel
+### The complete toolkit
 
-The landing page fits one screen, so the secondary pages open as overlays.
+All eight workstation modules are listed on the landing page and open the full app.
 
 ![Capabilities panel](docs/screenshots/02-landing-capabilities.png)
 
@@ -124,82 +131,30 @@ The landing page fits one screen, so the secondary pages open as overlays.
 
 ![Empty workstation](docs/screenshots/03-workstation-empty.png)
 
-### Hex editor — the main workspace
-
-Every byte of the file, in hexadecimal on the left and as readable text on the right.
-
-![Hex editor](docs/screenshots/04-hex-editor.png)
-
-### Byte editor — editing a single byte's bits
-
-Click any byte and the right panel lets you flip individual bits, with the value of each
-bit position shown beneath it.
-
-![Byte editor](docs/screenshots/05-byte-editor.png)
-
-### Signature analysis — what is this file, really?
-
-![Signature analysis](docs/screenshots/06-signature-analysis.png)
-
-### Threat intelligence — the risk score, and why
-
-![Threat intelligence](docs/screenshots/07-threat-intelligence.png)
-
-### Forensics lab — hashes, entropy, and strings
-
-![Forensics lab](docs/screenshots/08-forensics-lab.png)
-
-### File comparison — what changed between two files
-
-![File comparison](docs/screenshots/09-file-comparison.png)
-
-### Injector — the payload library
-
-![Payload library](docs/screenshots/10-injector-library.png)
-
-### Injector — the connect-back builder
-
-![Connect-back builder](docs/screenshots/11-connect-back-builder.png)
-
-### PE analysis — inside a Windows executable
-
-![PE analysis](docs/screenshots/13-pe-analysis.png)
-
-### Threat intelligence on an executable
-
-The same tab with a Windows program loaded, rather than a document — note how much more
-there is to report.
-
-![Threat intelligence on an executable](docs/screenshots/14-threat-executable.png)
-
-### PDF report — the deliverable
-
-![PDF report](docs/screenshots/12-pdf-report.png)
-
-### Wide view
-
-![Wide view](docs/screenshots/15-wide-view.png)
+The editor, byte inspector, analysis modules, injector, and report views are available in the workstation. Their current screenshots can be regenerated together with the capture script below.
 
 ### Regenerating the screenshots
 
-A script drives the whole application and captures every view automatically.
+A script drives the built application with in-memory sample files and refreshes the
+screenshots automatically, including the landing page and the eight-module toolkit.
 
 ```bash
 npm run build                      # build the current interface
-npm install -D playwright          # the capture tool (not installed by default)
+npm ci                              # installs the locked project dependencies, including Playwright
 npx playwright install chromium    # a headless browser, ~150 MB, one time only
 node tools/capture-screenshots.mjs # drives every view and writes the PNGs
 ```
 
 The script generates its own sample files in memory, opens each tab in turn, and writes
-sixteen PNGs into `docs/screenshots/`. Nothing on your disk is read or modified.
+up to fifteen PNGs into `docs/screenshots/`. Its binary samples are generated in memory;
+it does not read or modify your personal files.
 
 > If Playwright complains that the browser is missing even after installing it, the npm
 > package and the downloaded browser have drifted apart. Point the script at the browser
 > you already have:
 >
 > ```bash
-> CHROMIUM_PATH="$HOME/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe" >   node tools/capture-screenshots.mjs
+> CHROMIUM_PATH="$HOME/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe" node tools/capture-screenshots.mjs
 > ```
 
 ---

@@ -67,7 +67,7 @@ const SAMPLES = {
 
   png: `(() => { const c=document.createElement("canvas"); c.width=240; c.height=160;
     const x=c.getContext("2d"); const g=x.createLinearGradient(0,0,240,160);
-    g.addColorStop(0,"#0a0a0b"); g.addColorStop(1,"#3fb950"); x.fillStyle=g; x.fillRect(0,0,240,160);
+    g.addColorStop(0,"#242620"); g.addColorStop(1,"#b84322"); x.fillStyle=g; x.fillRect(0,0,240,160);
     x.fillStyle="#fff"; x.font="bold 22px monospace"; x.fillText("HEXFORGE",28,90);
     return new Promise(r=>c.toBlob(b=>r(new File([b],"sample-image.png",{type:"image/png"})),"image/png")); })()`
 };
@@ -102,12 +102,11 @@ await mkdir(OUT, { recursive: true });
 // browser can drift apart, and re-downloading a browser to take screenshots is wasteful.
 const installed = process.env.CHROMIUM_PATH;
 const browser = await chromium.launch(installed ? { executablePath: installed } : {});
-// The console is dark only; headless Chromium reports a light preference, and saying
-// so here keeps form controls and scrollbars from rendering light.
 const page = await browser.newPage({
   viewport: { width: 1680, height: 945 },
   deviceScaleFactor: 1,
-  colorScheme: "dark"
+  colorScheme: "light",
+  reducedMotion: "reduce"
 });
 
 console.log("capturing:");
@@ -115,13 +114,11 @@ await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "networkidle" });
 await page.waitForTimeout(2600);            // let the entrance animations settle
 await shot(page, "01-landing");
 
-// Capabilities panel on the landing
-await page.click('[data-panel="capabilities"]');
+// The landing is a scrollable page; capture the complete capability grid.
+await page.locator('a[href="#capabilities"]').first().click();
 await shot(page, "02-landing-capabilities");
-await page.keyboard.press("Escape");
-await page.waitForTimeout(400);
 
-await page.evaluate(() => { window.location.hash = "#/app"; });
+await page.evaluate(() => { window.location.hash = "#/app"; window.scrollTo(0, 0); });
 await page.waitForTimeout(2600);
 await shot(page, "03-workstation-empty");
 
