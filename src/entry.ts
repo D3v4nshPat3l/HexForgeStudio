@@ -1,6 +1,7 @@
 import "./styles.css";
 import "./landing.css";
 import "./redesign.css";
+import "./workstation.css";
 import { renderLanding } from "./landing";
 import { startSpotlight } from "./ambient";
 import { startLandingMotion } from "./landing-motion";
@@ -71,7 +72,10 @@ async function showWorkstation(): Promise<void> {
 function route(): void {
   if (!isOwnedRoute()) return;
   const next = isAppRoute() ? "app" : "landing";
-  if (next === currentRoute) return;
+  if (next === currentRoute) {
+    if (next === "landing") window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
   currentRoute = next;
   if (next === "app") void showWorkstation();
   else showLanding();

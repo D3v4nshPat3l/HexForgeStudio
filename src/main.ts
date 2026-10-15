@@ -1,7 +1,6 @@
 import { BRAND_MARK } from "./brand";
 import { startKineticNav, WORKSTATION_ITEMS } from "./kinetic-nav";
 import { startConstellation } from "./constellation";
-import { bindOriginButtons } from "./ui/origin-button";
 import { renderByteForge } from "./ui/byte-forge";
 import { headerLabel } from "./ui/forge-button";
 import { DEFAULT_INJECTOR_STATE, payloadKey, renderInjectorView, type InjectorState } from "./ui/injector";
@@ -155,8 +154,7 @@ const SHELL_HTML = `
     <div class="brand-lockup">
       <span class="brand-logo">${logoSvg}</span>
       <div>
-        <h1>HexForge Studio</h1>
-        <div class="active-file-heading"><strong id="activeFileHeading">No file loaded</strong><span id="activeFileSubheading">Open, drop, or create a binary file to begin</span></div>
+        <h1>HexForge <span class="brand-studio">STUDIO</span></h1>
       </div>
     </div>
     <div class="header-tools">
@@ -172,6 +170,8 @@ const SHELL_HTML = `
       </button>
     </div>
   </header>
+
+  <div class="work-session"><a href="#/">← Overview</a><span>WORKSTATION / BINARY FORENSICS</span><span class="session-local">● Local session</span></div>
 
   <nav class="command-bar" aria-label="Application commands">
     <button data-command="new">${headerLabel("New", '', '＋')}</button>
@@ -191,8 +191,13 @@ const SHELL_HTML = `
     <span class="command-divider"></span>
     <button data-command="insert" disabled>${headerLabel("Insert", '', '⊕')}</button>
     <button data-command="delete" disabled>${headerLabel("Delete", '', '⌫')}</button>
-    <span class="command-spacer"></span>
-    <div class="view-tabs" id="viewTabs" role="tablist" aria-label="Workspace views">
+  </nav>
+
+  <main class="app-workspace">
+    <aside class="left-rail">
+      <div class="rail-scroll">
+        <h2>ANALYSIS<button type="button" class="rail-collapse" data-action="collapse-left" title="Hide this panel" aria-label="Hide the file navigator panel">⟨</button></h2>
+    <div class="view-tabs" id="viewTabs" role="tablist" aria-label="Workspace views" aria-orientation="vertical">
       <button class="view-tab active" data-view="hex">${headerLabel("Hex Editor")}</button>
       <button class="view-tab" data-view="signature">${headerLabel("Signature Analysis")}</button>
       <button class="view-tab" data-view="intel">${headerLabel("Threat Intelligence", '<span class="tab-count" id="intelTabCount">0</span>')}</button>
@@ -202,14 +207,7 @@ const SHELL_HTML = `
       <button class="view-tab" data-view="injector">${headerLabel("Injector")}</button>
       <button class="view-tab" data-view="report">${headerLabel("PDF Report")}</button>
     </div>
-  </nav>
-
-  <div class="workspace-tabs" id="workspaceTabs"><span>Open multiple files to create workspace tabs.</span></div>
-
-  <main class="app-workspace">
-    <aside class="left-rail">
-      <div class="rail-scroll">
-        <h2>FILE NAVIGATOR<button type="button" class="rail-collapse" data-action="collapse-left" title="Hide this panel" aria-label="Hide the file navigator panel">⟨</button></h2>
+        <details class="navigator-details"><summary>File & navigation</summary>
         <section class="rail-section">
           <h3>FILE INFORMATION</h3>
           <dl id="fileInformation">
@@ -233,12 +231,17 @@ const SHELL_HTML = `
           <h3>WORKSPACE FILES</h3>
           <div id="fileNavigatorList" class="file-navigator-list"><p>No files open.</p></div>
         </section>
+        </details>
+        <div class="local-promise">FILES STAY LOCAL<span>No upload endpoint.</span></div>
       </div>
     </aside>
 
     <div class="rail-resizer" id="resizeLeft" role="separator" aria-orientation="vertical"
       aria-label="Resize the file navigator panel" tabindex="0"></div>
     <section class="center-workspace">
+      <div class="workspace-file-heading active-file-heading"><strong id="activeFileHeading">No file loaded</strong><span id="activeFileSubheading">Open, drop, or create a binary file to begin</span><span id="riskBadgeSlotFile"></span></div>
+      <div class="workspace-tabs" id="workspaceTabs"></div>
+      <div class="workspace-view-heading"><h2 id="workspaceViewTitle">Hex editor</h2><span>YOUR FILE. YOUR MACHINE.</span></div>
       <div class="rain-field" aria-hidden="true"></div>
       <canvas class="constellation-mesh" aria-hidden="true"></canvas>
       <div class="view-content" id="viewContent"></div>
@@ -248,7 +251,7 @@ const SHELL_HTML = `
       aria-label="Resize the byte editor panel" tabindex="0"></div>
     <aside class="right-rail">
       <div class="rail-scroll">
-        <h2>BYTE EDITOR<button type="button" class="rail-collapse" data-action="collapse-right" title="Hide this panel" aria-label="Hide the byte editor panel">⟩</button></h2>
+        <h2>BYTE INSPECTOR<button type="button" class="rail-collapse" data-action="collapse-right" title="Hide this panel" aria-label="Hide the byte editor panel">⟩</button></h2>
         <section class="rail-section" id="byteForge"><p class="rail-empty">Select a byte in the editor.</p></section>
         <section class="rail-section compact-section">
           <h3>SELECTION</h3>
@@ -653,8 +656,8 @@ function renderWorkspaceTabs(): void {
   // byte grid is exactly what makes hex hard to read.
   document.querySelector(".studio-shell")?.classList.toggle("has-file", tabs.length > 0);
 
-  if (tabs.length === 0) {
-    workspaceTabs.innerHTML = "<span>Open multiple files to create workspace tabs.</span>";
+  if (tabs.length <= 1) {
+    workspaceTabs.innerHTML = "";
     return;
   }
   workspaceTabs.innerHTML = tabs.map((tab) => `<button class="workspace-file-tab ${tab.id === activeId ? "active" : ""}" data-tab-id="${tab.id}"><i class="tab-dot ${tab.progress ? "busy" : tab.error ? "error" : tab.patches.size ? "dirty" : ""}"></i><span>${escapeHtml(tab.file.name)}</span><small>${formatBytes(tab.file.size)}</small><b data-close-tab="${tab.id}">×</b></button>`).join("");
@@ -733,18 +736,14 @@ function previewTabApplies(): boolean {
 }
 
 function renderViewTabs(): void {
-  document.querySelectorAll<HTMLButtonElement>(".view-tabs [data-view]").forEach((button) => button.classList.toggle("active", button.dataset.view === activeView));
-
-  // Hide the preview tab when it cannot report anything, and step off it if the user
-  // is standing there when a new file makes it inapplicable.
-  const previewTab = document.querySelector<HTMLElement>('.view-tabs [data-view="preview"]');
-  const applies = previewTabApplies();
-  previewTab?.classList.toggle("tab-hidden", !applies);
-  if (!applies && activeView === "preview") {
-    activeView = "hex";
-    previewTab?.classList.remove("active");
-    document.querySelector('.view-tabs [data-view="hex"]')?.classList.add("active");
-  }
+  document.querySelectorAll<HTMLButtonElement>(".view-tabs [data-view]").forEach((button) => {
+    const selected = button.dataset.view === activeView;
+    button.classList.toggle("active", selected);
+    button.setAttribute("role", "tab");
+    button.setAttribute("aria-selected", String(selected));
+  });
+  const titles: Record<MainView, string> = { hex: "Hex editor", signature: "Signature analysis", intel: "Threat intelligence", forensics: "Forensics lab", comparison: "File comparison", preview: "PE analysis & preview", injector: "Injector workbench", report: "PDF report" };
+  $("#workspaceViewTitle").textContent = titles[activeView];
   const count = document.querySelector<HTMLElement>("#intelTabCount");
   const analysis = activeTab()?.analysis;
   if (count) {
@@ -1039,7 +1038,7 @@ function updateContinuousPageIndicator(tab: EditorTab, topRow: number): void {
 
 function renderHexView(): void {
   const tab = activeTab();
-  const headerBytes = Array.from({ length: bytesPerRow }, (_, index) => `<b>${index.toString(16).toUpperCase()}</b>`).join("");
+  const headerBytes = Array.from({ length: bytesPerRow }, (_, index) => `<b>${index.toString(16).toUpperCase().padStart(2, "0")}</b>`).join("");
   if (!tab) {
     viewContent.innerHTML = `<div class="hex-view empty-hex"><div class="hex-header-viewport"><div class="hex-column-header"><span class="offset-head">OFFSET</span><div style="--row-bytes:${bytesPerRow}">${headerBytes}</div><span class="ascii-head">TEXT</span></div></div>${emptyCard("Open a file to edit its bytes", "Files stay in this browser. Use Open, drag and drop a file, or create a new binary file. Edited bytes can be saved or exported afterward.")}</div>`;
     return;
@@ -1930,6 +1929,11 @@ app.addEventListener("input", (event) => {
     refreshInjectorPreview();
     return;
   }
+  if (typed.id === "injRepeat") {
+    injector.repeat = Math.max(1, Math.min(4096, Math.trunc(Number((typed as HTMLInputElement).value) || 1)));
+    refreshInjectorPreview();
+    return;
+  }
   const target = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
   if (["baseValue", "baseFrom", "baseTo"].includes(target.id)) updateBaseConverter();
   if (target.id === "stringFilter") {
@@ -1971,11 +1975,11 @@ app.addEventListener("change", (event) => {
   if (target.id === "injEncoding") { injector.encoding = target.value as EncodingId; renderInjectorPanel(); return; }
   if (target.id === "injMode") { injector.mode = target.value as InjectorState["mode"]; renderInjectorPanel(); return; }
   if (target.id === "injOffset") { injector.offsetText = target.value; return; }
-  if (target.id === "injSource") { injector.source = target.value; injector.edited = true; injector.payloadKey = ""; renderInjectorPanel(); return; }
-  if (target.id === "injRepeat") { injector.repeat = Math.max(1, Math.min(4096, Number(target.value) || 1)); renderInjectorPanel(); return; }
+  if (target.id === "injSource") { injector.source = target.value; injector.edited = true; injector.payloadKey = ""; refreshInjectorPreview(); return; }
+  if (target.id === "injRepeat") { injector.repeat = Math.max(1, Math.min(4096, Math.trunc(Number(target.value) || 1))); target.value = String(injector.repeat); refreshInjectorPreview(); return; }
   if (target.id === "injHost") { injector.host = target.value; renderInjectorPanel(); return; }
   if (target.id === "injPort") { injector.port = target.value; renderInjectorPanel(); return; }
-  if (target.id === "injNull") { injector.nullTerminate = (target as HTMLInputElement).checked; renderInjectorPanel(); return; }
+  if (target.id === "injNull") { injector.nullTerminate = (target as HTMLInputElement).checked; refreshInjectorPreview(); return; }
   if (target.id === "byteHexInput") {
     const tabNow = activeTab();
     const text = target.value.trim();
@@ -2022,7 +2026,7 @@ app.addEventListener("keydown", (event) => {
   if (event.key in moves) { event.preventDefault(); tab.nibble = 0; setCursor(tab.cursor + (moves[event.key] ?? 0), event.shiftKey); return; }
   if (event.key === "Home") { event.preventDefault(); tab.nibble = 0; setCursor(event.ctrlKey ? 0 : rowStart, event.shiftKey); return; }
   if (event.key === "End") { event.preventDefault(); tab.nibble = 0; setCursor(event.ctrlKey ? tab.file.size - 1 : Math.min(tab.file.size - 1, rowStart + bytesPerRow - 1), event.shiftKey); return; }
-  if (event.key === "w" || event.key === "W") {
+  if (tab.inputMode === "hex" && (event.key === "w" || event.key === "W")) {
     if (!event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault();
       wideView = !wideView;
@@ -2167,10 +2171,7 @@ export function mountWorkstation(root: HTMLDivElement): void {
   stopStudioOrigin?.();
   // The two header bars now use the same treatment as the Menu button rather than a
   // separate flood, so one binding covers everything.
-  stopStudioOrigin = bindOriginButtons(
-    app,
-    "#studioMenuBtn, .empty-file-card .primary, .command-bar button, .view-tabs button"
-  );
+  stopStudioOrigin = null;
 
   registerListeners();
   updateAll();
@@ -2440,6 +2441,7 @@ const RAIL_STORAGE = "hexforge.rails";
 interface RailLayout { left: number; right: number; leftHidden: boolean; rightHidden: boolean }
 
 let rails: RailLayout = loadRailLayout();
+let narrowInspectorOpen = false;
 
 function loadRailLayout(): RailLayout {
   const fallback: RailLayout = { left: 0, right: 0, leftHidden: false, rightHidden: false };
@@ -2541,6 +2543,12 @@ function bindRailResizer(id: string, side: "left" | "right"): void {
 
 /** Collapses or restores a rail; the grid reclaims the space either way. */
 function toggleRail(side: "left" | "right"): void {
+  if (side === "right" && window.matchMedia("(max-width: 760px)").matches) {
+    narrowInspectorOpen = !narrowInspectorOpen;
+    document.querySelector(".studio-shell")?.classList.toggle("inspector-drawer-open", narrowInspectorOpen);
+    renderRailToggles();
+    return;
+  }
   if (side === "left") rails.leftHidden = !rails.leftHidden;
   else rails.rightHidden = !rails.rightHidden;
   applyRailLayout();
@@ -2556,11 +2564,12 @@ function toggleRail(side: "left" | "right"): void {
 function renderRailToggles(): void {
   const slot = document.querySelector<HTMLElement>("#railToggles");
   if (!slot) return;
+  const rightVisible = window.matchMedia("(max-width: 760px)").matches ? narrowInspectorOpen : !rails.rightHidden;
   slot.innerHTML =
     `<button type="button" class="rail-restore${rails.leftHidden ? "" : " active"}" data-action="collapse-left"
       title="${rails.leftHidden ? "Show" : "Hide"} the file navigator">◧ Navigator</button>` +
-    `<button type="button" class="rail-restore${rails.rightHidden ? "" : " active"}" data-action="collapse-right"
-      title="${rails.rightHidden ? "Show" : "Hide"} the byte editor">Byte editor ◨</button>`;
+    `<button type="button" class="rail-restore${rightVisible ? " active" : ""}" data-action="collapse-right"
+      title="${rightVisible ? "Hide" : "Show"} the byte editor">Byte editor ◨</button>`;
 }
 
 

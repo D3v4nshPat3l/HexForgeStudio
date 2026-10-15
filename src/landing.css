@@ -87,6 +87,11 @@
 .landing.motion-ready .reveal { opacity:0; transform:translateY(12px); transition:opacity .5s ease,transform .5s cubic-bezier(.22,.61,.36,1); }
 .landing.motion-ready .reveal.is-visible { opacity:1; transform:translateY(0); }
 @keyframes specimen-enter { from { opacity:0; transform:translateY(9px); } to { opacity:1; transform:translateY(0); } }
+.landing .specimen { position:relative; overflow:hidden; }
+.landing .specimen::after { content:""; position:absolute; inset:0 auto 0 0; width:28%; pointer-events:none; background:linear-gradient(90deg,transparent,rgba(192,204,169,.09),transparent); transform:translateX(-110%); animation:specimen-scan 7s ease-in-out infinite; }
+.landing .signature-note b { animation:signature-beat 7s ease-in-out infinite; }
+@keyframes specimen-scan { 0%,8% { transform:translateX(-110%); opacity:0; } 14% { opacity:1; } 65% { transform:translateX(460%); opacity:1; } 72%,100% { transform:translateX(460%); opacity:0; } }
+@keyframes signature-beat { 0%,35%,75%,100% { color:inherit; } 48%,62% { color:#e19a7c; } }
 @media(max-width:1050px) {
  .landing .hero { grid-template-columns:1fr 1fr; gap:4%; padding-top:68px; }
  .landing h1 { font-size:clamp(56px,7vw,76px); }

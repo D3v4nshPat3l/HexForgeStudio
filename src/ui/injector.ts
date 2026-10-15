@@ -113,7 +113,9 @@ export function renderInjectorView(input: InjectorRenderInput): string {
         aria-selected="${state.tool === "shell"}">Connect-back builder</button>
     </div>
 
+    <div class="injector-columns"><div class="injector-catalogue">
     ${state.tool === "library" ? renderBrowser(state) : renderShellBuilder(state)}
+    </div><div class="injector-composer">
 
     <section class="content-card">
       <div class="card-heading">
@@ -189,6 +191,7 @@ export function renderInjectorView(input: InjectorRenderInput): string {
       systems and artifacts you own or are authorized to test. The application does not execute
       payloads, does not open network connections, and sends nothing anywhere.
     </section>
+    </div></div>
   </div>`;
 }
 
