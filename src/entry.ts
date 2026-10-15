@@ -1,11 +1,9 @@
 import "./styles.css";
 import "./landing.css";
+import "./redesign.css";
 import { renderLanding } from "./landing";
-import { bindPanels, startCounters, startParallax, startSpotlight } from "./ambient";
-import { startMatrixField } from "./matrix-field";
-import { bindOriginButtons } from "./ui/origin-button";
-import { startHeroMotion } from "./hero-motion";
-import { startKineticNav } from "./kinetic-nav";
+import { startSpotlight } from "./ambient";
+import { startLandingMotion } from "./landing-motion";
 import { applyTheme } from "./theme";
 
 /**
@@ -45,24 +43,8 @@ function showLanding(): void {
   mount.innerHTML = renderLanding();
   document.title = "HexForge Studio Pro — Local-first binary forensics";
   window.scrollTo(0, 0);
-  bindLandingChrome();
-
   const surface = mount.querySelector<HTMLElement>(".landing");
-  const stats = mount.querySelector<HTMLElement>("#stats");
-  if (surface) {
-    const field = surface.querySelector<HTMLElement>("#matrixField");
-    const stopField = field ? startMatrixField(field) : () => {};
-    const stopOrigin = bindOriginButtons(surface, ".cta, .cta-ghost, .nav-menu-btn");
-    // After the origin buttons, so the magnet can move their injected label wrapper.
-    const stopHero = startHeroMotion(surface);
-    const trigger = surface.querySelector<HTMLElement>("#burger");
-    // The kinetic overlay replaces the old slide-down sheet at every width.
-    const stopMenu = trigger ? startKineticNav(surface, trigger) : () => {};
-    const stopPanels = bindPanels(surface);
-    const stopParallax = startParallax(surface);
-    const stopCounters = stats ? startCounters(stats) : () => {};
-    stopAmbient = () => { stopField(); stopMenu(); stopPanels(); stopParallax(); stopCounters(); stopOrigin(); stopHero(); };
-  }
+  if (surface) stopAmbient = startLandingMotion(surface);
 }
 
 async function showWorkstation(): Promise<void> {
@@ -84,10 +66,6 @@ async function showWorkstation(): Promise<void> {
   workstationLoaded = true;
   mountWorkstation(mount);
   attachWorkstationField();
-}
-
-function bindLandingChrome(): void {
-
 }
 
 function route(): void {
