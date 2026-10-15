@@ -11,7 +11,7 @@
 
 import { chromium } from "playwright";
 import { createServer } from "node:http";
-import { readFile, mkdir } from "node:fs/promises";
+import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, extname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -113,6 +113,19 @@ console.log("capturing:");
 await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "networkidle" });
 await page.waitForTimeout(2600);            // let the entrance animations settle
 await shot(page, "01-landing");
+
+// Record actual decorative motion separately from the still screenshots.
+const motionDir = join(OUT, ".motion-frames");
+await mkdir(motionDir, { recursive: true });
+await page.emulateMedia({ reducedMotion: "no-preference" });
+const times = [];
+for (let frame = 0; frame < 60; frame += 1) {
+  times.push(Date.now());
+  await page.screenshot({ path: join(motionDir, `frame-${String(frame).padStart(3, "0")}.png`) });
+  await page.waitForTimeout(80);
+}
+await writeFile(join(motionDir, "times.json"), JSON.stringify(times));
+await page.emulateMedia({ reducedMotion: "reduce" });
 
 // The landing is a scrollable page; capture the complete capability grid.
 await page.locator('a[href="#capabilities"]').first().click();

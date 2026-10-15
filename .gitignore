@@ -22,3 +22,5 @@ Desktop.ini
 .vercel
 .claude/
 tsconfig.tsbuildinfo
+# Intermediate frames; the final README GIFs are committed.
+docs/screenshots/.motion-frames/

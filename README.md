@@ -22,7 +22,9 @@
 
 `40,849 payloads` · `135 connect-back commands` · `75 file signatures` · `0 bytes uploaded`
 
-<a href="docs/screenshots/01-landing.png"><img src="docs/screenshots/01-landing.png" alt="HexForge Studio's warm-paper landing page with its binary inspection specimen and oxide-accented identity" width="100%"></a>
+<a href="docs/screenshots/hexforge-tour.gif"><img src="docs/screenshots/hexforge-tour.gif" alt="Animated tour of the actual HexForge Studio landing, hex editor, analysis modules, injector, image preview, and PDF report" width="100%"></a>
+
+<sub>A walkthrough assembled from real application screenshots. Full-resolution views are below.</sub>
 
 </div>
 
@@ -54,9 +56,27 @@ PDF, a disk image, a photograph, anything at all — and it tells you what that 
 really is, what it contains, whether it looks dangerous, and lets you edit it byte by
 byte.
 
-It runs in your browser, but there is no website involved. A small Python program on
-your computer serves the page to your own browser, and every byte of analysis happens
-inside that browser tab, on your machine.
+Use the [hosted app](https://hex-forge-studio.vercel.app/) immediately, or run the same
+workstation locally. File reading, editing, and analysis happen inside your browser,
+on your machine. Python is only needed for the optional local launcher.
+
+### Get started in a minute
+
+For the hosted version: open the live app, choose **Open workstation**, then **Open** a
+local file. Select **HEX** or **TEXT** to choose how you edit. Switch tools in the left
+sidebar, then use **Save As** to keep an edited copy.
+
+For local development, install Node.js 20.19+ and run:
+
+```bash
+git clone https://github.com/D3v4nshPat3l/HexForgeStudio.git
+cd HexForgeStudio
+npm ci
+npm run dev
+```
+
+Open the local URL Vite prints. The full launcher instructions for Windows, macOS,
+and Linux are further below.
 
 **In plain terms, it does five things:**
 
@@ -110,9 +130,64 @@ HexForge Studio removes the question entirely.
 
 ## 3. Screenshots
 
-These screenshots show the current paper, ink, and oxide design. The landing page uses a
-quiet animated byte field; screenshots capture a still frame so the interface remains
-easy to scan.
+The animated walkthrough at the top and the screenshots below are committed assets
+from the working application. Click a screenshot to inspect it at full resolution.
+The editor and analysis captures use the bundled PNG logo as a local sample; the
+injector captures use a temporary test buffer and the harmless marker `HEXFORGE`.
+
+### The editor: bytes, decoded text, and a dedicated inspector
+
+The left sidebar keeps all eight tools visible. The byte grid fills the available
+height; **HEX / TEXT** chooses the editing mode, and **Wide view** gives the file the
+whole workspace. The right inspector shows the selected value, bits, and data types.
+
+![Full-height hex editor with visible tool navigation and byte inspector](docs/screenshots/04-hex-editor.png)
+
+### The injector: choose, configure, preview, write
+
+Browse the complete catalogue on the left. The source, encoding, position, repeat,
+null terminator, and exact byte preview sit together on the right. **Inject** writes
+to the open in-memory file and supports undo.
+
+![Payload catalogue beside source and delivery controls](docs/screenshots/10-injector-library.png)
+
+![All five connect-back groups with delivery controls](docs/screenshots/11-connect-back-builder.png)
+
+<details>
+<summary><strong>See the analysis, preview, and report views</strong></summary>
+
+**Byte editing in text mode**
+
+![Text editing and bit inspector](docs/screenshots/05-byte-editor.png)
+
+**Signature analysis** — content-based identification and header evidence.
+
+![Signature analysis of the sample PNG](docs/screenshots/06-signature-analysis.png)
+
+**Threat intelligence** — an explainable local risk assessment.
+
+![Threat intelligence overview](docs/screenshots/07-threat-intelligence.png)
+
+**Forensics lab** — hashes, entropy, distribution, and strings.
+
+![Forensics tools and file evidence](docs/screenshots/08-forensics-lab.png)
+
+**File comparison** — select another local file or workspace tab to compare.
+
+![File comparison controls](docs/screenshots/09-file-comparison.png)
+
+**PE analysis & native preview** — this capture shows the supported PNG preview.
+
+![Native image preview](docs/screenshots/13-pe-analysis.png)
+
+**PDF report** — case details, scope, and a report preview before export.
+
+![PDF report setup and preview](docs/screenshots/12-pdf-report.png)
+
+</details>
+
+<details>
+<summary><strong>See the landing page and initial workspace</strong></summary>
 
 ### The landing page
 
@@ -120,6 +195,11 @@ The front door: a byte-inspection specimen, local-first promise, and a restraine
 field of connected byte markers behind the illustration.
 
 ![Landing page](docs/screenshots/01-landing.png)
+
+**Landing motion** — the local byte field and a slow inspection sweep, captured from
+the page itself. Decorative motion stops when reduced motion is enabled.
+
+![Recorded landing field and inspection sweep](docs/screenshots/landing-motion.gif)
 
 ### The complete toolkit
 
@@ -131,7 +211,7 @@ All eight workstation modules are listed on the landing page and open the full a
 
 ![Empty workstation](docs/screenshots/03-workstation-empty.png)
 
-The editor, byte inspector, analysis modules, injector, and report views are available in the workstation. Their current screenshots can be regenerated together with the capture script below.
+</details>
 
 ### Regenerating the screenshots
 
@@ -139,8 +219,8 @@ A script drives the built application with in-memory sample files and refreshes 
 screenshots automatically, including the landing page and the eight-module toolkit.
 
 ```bash
-npm run build                      # build the current interface
 npm ci                              # installs the locked project dependencies, including Playwright
+npm run build                       # build the current interface
 npx playwright install chromium    # a headless browser, ~150 MB, one time only
 node tools/capture-screenshots.mjs # drives every view and writes the PNGs
 ```
@@ -148,6 +228,18 @@ node tools/capture-screenshots.mjs # drives every view and writes the PNGs
 The script generates its own sample files in memory, opens each tab in turn, and writes
 up to fifteen PNGs into `docs/screenshots/`. Its binary samples are generated in memory;
 it does not read or modify your personal files.
+
+To rebuild the animated walkthrough from those screenshots:
+
+```bash
+python -m pip install Pillow
+python tools/build-readme-tour.py
+```
+
+The website itself uses a local canvas field, scroll reveals, and short interface
+transitions. Decorative motion respects the system's reduced-motion preference; the
+byte cells remain still while you work. GitHub displays the separate GIF above because
+README pages cannot run the site's JavaScript animations.
 
 > If Playwright complains that the browser is missing even after installing it, the npm
 > package and the downloaded browser have drifted apart. Point the script at the browser
